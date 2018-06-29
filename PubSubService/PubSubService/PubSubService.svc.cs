@@ -6,45 +6,48 @@ using System.ServiceModel;
 using System.ServiceModel.Web;
 using System.Text;
 
-namespace PubSubService
+namespace PubSubMonitoringService
 {
-    // NOTE: You can use the "Rename" command on the "Refactor" menu to change the class name "Service1" in code, svc and config file together.
-    // NOTE: In order to launch WCF Test Client for testing this service, please select Service1.svc or Service1.svc.cs at the Solution Explorer and start debugging.
-    [ServiceBehavior(InstanceContextMode =InstanceContextMode.Single)]
-    public class PubSubService : IPubSubService
+    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession)]
+    public class PubSubMonitoringService : IPubSubMonitoringService
     {
-        public delegate void MethodRanEventHandler(string message);
-        public static event MethodRanEventHandler methodRanEvent;
+        IPubSubMonitoringContract _serviceCallback = null;
 
-        IPubSubContract _serviceCallback = null;
-        MethodRanEventHandler _methodHandler = null;
+        // Monitoring Messages
+        public delegate void MonitoringMessageEventHandler(string message);
+        public static event MonitoringMessageEventHandler MonitoringMessageEvent;
+        MonitoringMessageEventHandler _monitorMessageHandler = null;
 
-        public void Subscribe()
+        public bool MonitoringEnabled { get; private set; } = false;
+        
+        // Contract functions
+        void IPubSubMonitoringService.Subscribe()
         {
-            _serviceCallback = OperationContext.Current.GetCallbackChannel<IPubSubContract>();
-            _methodHandler = new MethodRanEventHandler(PublishMethodRanHandler);
-            methodRanEvent += _methodHandler;
+            _serviceCallback = OperationContext.Current.GetCallbackChannel<IPubSubMonitoringContract>();
 
-            Console.WriteLine(OperationContext.Current.EndpointDispatcher.EndpointAddress.Uri.OriginalString);
+            Console.WriteLine("Subscribed");
+            // Set eventhandler for monitoring messages in direction of Monitored application -> Monitor
+            _monitorMessageHandler = new MonitoringMessageEventHandler(PublishMonitoringEventHandler);
+            MonitoringMessageEvent = _monitorMessageHandler;
         }
 
-        public void UnSubscribe()
+        void IPubSubMonitoringService.UnSubscribe()
         {
-            methodRanEvent -= _methodHandler;
+            Console.WriteLine("UnSubscribed");
 
-            Console.WriteLine(OperationContext.Current.EndpointDispatcher.EndpointAddress.Uri.OriginalString);
+            MonitoringMessageEvent -= _monitorMessageHandler;
         }
 
-        public void PublishMethodRan(string message)
+        void IPubSubMonitoringService.PublishMonitorMessage(string message)
         {
-            methodRanEvent(message);
+            MonitoringMessageEvent(message);
         }
+        
 
-        public void PublishMethodRanHandler(string message)
+        // Monitoring Message Event handler
+        void PublishMonitoringEventHandler(string message)
         {
-            _serviceCallback.MethodRan(message);
-
-            Console.WriteLine(OperationContext.Current.EndpointDispatcher.EndpointAddress.Uri.OriginalString);
+            _serviceCallback.PublishMonitorMessageRan(message);
         }
     }
 }

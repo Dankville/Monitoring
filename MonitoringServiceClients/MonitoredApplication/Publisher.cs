@@ -11,31 +11,40 @@ namespace MonitoredApplication
 {
     public class Publisher
     {
-        static InstanceContext _Context = null;
-        static PubSubServiceClient _Client = null;
-        static Publisher _instance = null;
-
-        private Publisher()
+        [CallbackBehavior(UseSynchronizationContext = false)]
+        public class MonitoredAppCalls : IPubSubMonitoringServiceCallback
         {
-
-        }
-
-        public static Publisher PublisherInstance()
-        {
-            if (_instance == null)
+            public void PublishMonitorMessageRan(string message)
             {
-                
-                _instance = new Publisher();
+                // does nothing since we dont get Monitoring messages here
             }
-            return _instance;
         }
+
+
+        // should be a singleton
+        private static Publisher _Instance = null;
+        private Publisher() { }
+
+        public static Publisher Instance()
+        {
+            if (_Instance == null)
+            {
+                _Instance = new Publisher(); 
+            }
+            return _Instance;
+        }
+
+        public static bool MonitoringEnabled { get; private set; } = false;
+
+        static InstanceContext _context = null;
+        static PubSubMonitoringServiceClient _client = null;
 
         public static void PublishMessage(string message)
         {
-            _Context = new InstanceContext(new MethodRanPublishMessage());
-            _Client = new PubSubServiceClient(_Context, "NetTcpBinding_IPubSubService");
-            _Client.PublishMethodRan(message);
-            _Client.Close();
+            _context = new InstanceContext(new MonitoredAppCalls());
+            _client = new PubSubMonitoringServiceClient(_context, "NetTcpBinding_IPubSubMonitoringService");
+            _client.PublishMonitorMessage(message);
+            _client.Close();
         }
     }
 }

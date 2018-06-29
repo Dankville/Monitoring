@@ -55,13 +55,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="Connected Services\MonitoringService\item.xsd">
-      <SubType>Designer</SubType>
-    </None>
-    <None Include="Connected Services\MonitoringService\item1.xsd">
-      <SubType>Designer</SubType>
-    </None>
-    <None Include="Connected Services\MonitoringService\PubSubService1.wsdl" />
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Connected Services\" />
@@ -76,6 +69,13 @@
     <None Include="Connected Services\MonitoringService\configuration.svcinfo" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Connected Services\MonitoringService\item2.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Connected Services\MonitoringService\item21.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Connected Services\MonitoringService\MonitoringService.wsdl" />
     <None Include="Connected Services\MonitoringService\Reference.svcmap">
       <Generator>WCF Proxy Generator</Generator>
       <LastGenOutput>Reference.cs</LastGenOutput>

@@ -24,7 +24,7 @@ namespace MonitoredApplication
                     app.TestMethod(count);
                 }
                 count++;
-                //Console.ReadLine();
+                System.Threading.Thread.Sleep(1000);
             }
             Console.WriteLine("Test methods are done press [enter] to terminate.");
             Console.ReadLine();

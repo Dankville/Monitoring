@@ -11,31 +11,31 @@ namespace MonitoringServiceClients
 {
     public class Monitor
     {
-        public delegate void MonitoringEventHandler(string message);
-        public static event MonitoringEventHandler MonitoringCallbackEvent;
-        
         [CallbackBehavior(UseSynchronizationContext = false)]
-        public class MonitoringServiceCallback : IPubSubServiceCallback
+        public class MonitoringServiceCall : IPubSubMonitoringServiceCallback
         {
-            public void MethodRan(string message)
+            public void PublishMonitorMessageRan(string message)
             {
-                Monitor.MonitoringCallbackEvent(message);
+                Monitor.MonitoredEventOccured(message);
             }
         }
 
+        public delegate void MonitoredEventHandler(string message);
+        public static event MonitoredEventHandler MonitoredEventOccured;
+        
+
         public Monitor()
         {
-            InstanceContext context = new InstanceContext(new MonitoringServiceCallback());
-            PubSubServiceClient client = new PubSubServiceClient(context, "WSDualHttpBinding_IPubSubService");
-            MonitoringEventHandler callbackHandler = new MonitoringEventHandler(ShowMessage);
-            MonitoringCallbackEvent += callbackHandler;
+            InstanceContext context = new InstanceContext(new MonitoringServiceCall());
+            PubSubMonitoringServiceClient client = new PubSubMonitoringServiceClient(context, "WSDualHttpBinding_IPubSubMonitoringService");
+            MonitoredEventHandler callbackHandler = new MonitoredEventHandler(ShowMessage);
+            MonitoredEventOccured += callbackHandler;
+
+            Console.WriteLine("Monitor started press [enter] to unsubscribe");
             client.Subscribe();
-
-            Console.WriteLine("Monitoring is listening to subscribed application press [enter] to unsubscribe.");
-
             Console.ReadLine();
-
             client.UnSubscribe();
+            Console.ReadLine();
         }
 
         public void ShowMessage(string message)

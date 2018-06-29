@@ -19,12 +19,12 @@
     <ServiceContractMappings />
   </ClientOptions>
   <MetadataSources>
-    <MetadataSource Address="http://localhost:9000/PubSubService/" Protocol="http" SourceId="1" />
+    <MetadataSource Address="http://localhost:9000/PubSubMonitoringService/" Protocol="http" SourceId="1" />
   </MetadataSources>
   <Metadata>
-    <MetadataFile FileName="PubSubService1.wsdl" MetadataType="Wsdl" ID="4e9963d4-9c24-40d1-a87a-bd5eb77cff38" SourceId="1" SourceUrl="http://localhost:9000/PubSubService/" />
-    <MetadataFile FileName="item.xsd" MetadataType="Schema" ID="f092da44-00ac-450d-b2bf-92e7f6297c86" SourceId="1" SourceUrl="http://localhost:9000/PubSubService/?xsd=xsd1" />
-    <MetadataFile FileName="item1.xsd" MetadataType="Schema" ID="83db0a2b-179e-4cfd-a459-aff23551a0ee" SourceId="1" SourceUrl="http://localhost:9000/PubSubService/?xsd=xsd0" />
+    <MetadataFile FileName="MonitoringService.wsdl" MetadataType="Wsdl" ID="e469bf11-e7b5-476b-ad83-f2ec60edc213" SourceId="1" SourceUrl="http://localhost:9000/PubSubMonitoringService/" />
+    <MetadataFile FileName="item2.xsd" MetadataType="Schema" ID="1ee93c64-76cb-494e-bc35-862081e5c888" SourceId="1" SourceUrl="http://localhost:9000/PubSubMonitoringService/?xsd=xsd1" />
+    <MetadataFile FileName="item21.xsd" MetadataType="Schema" ID="89900748-4fff-4771-ae0f-a104a5e0086b" SourceId="1" SourceUrl="http://localhost:9000/PubSubMonitoringService/?xsd=xsd0" />
   </Metadata>
   <Extensions>
     <ExtensionFile FileName="configuration91.svcinfo" Name="configuration91.svcinfo" />

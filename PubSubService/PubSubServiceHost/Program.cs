@@ -6,26 +6,25 @@ using System.Threading.Tasks;
 using System.ServiceModel;
 using System.ServiceModel.Description;
 
-using PubSubService;
+using PubSubMonitoringService;
 
-namespace PubSubServiceHost
+namespace PubSubMonitoringServiceHost
 {
     class Program
     {
         static void Main(string[] args)
         {
-            Uri subscriptionAddress = new Uri("http://localhost:9000/PubSubService/");
-            Uri publishingAddress = new Uri("net.tcp://localhost:9001/PubSubService/");
+            Uri subscriptionAddress = new Uri("http://localhost:9000/PubSubMonitoringService/");
+            Uri publishingAddress = new Uri("net.tcp://localhost:9001/PubSubMonitoringService/");
 
-
-            ServiceHost selfHost = new ServiceHost(typeof(PubSubService.PubSubService));
+            ServiceHost selfHost = new ServiceHost(typeof(PubSubMonitoringService.PubSubMonitoringService), subscriptionAddress);
             // Binding for handling subscriptions the subscriptions.
             WSDualHttpBinding subscriptionBinding = new WSDualHttpBinding();
-            selfHost.AddServiceEndpoint(typeof(IPubSubService), subscriptionBinding, subscriptionAddress);
+            selfHost.AddServiceEndpoint(typeof(IPubSubMonitoringService), subscriptionBinding, subscriptionAddress);
 
             // Binding for handling messages. We use NetTcpBinding because it's way faster.
             NetTcpBinding publishBinding = new NetTcpBinding(SecurityMode.None, false);
-            selfHost.AddServiceEndpoint(typeof(IPubSubService), publishBinding, publishingAddress);
+            selfHost.AddServiceEndpoint(typeof(IPubSubMonitoringService), publishBinding, publishingAddress);
            
 
             ServiceMetadataBehavior smb = new ServiceMetadataBehavior();
@@ -38,6 +37,7 @@ namespace PubSubServiceHost
             Console.WriteLine("Press [enter] to terminate.");
             Console.ReadLine();
 
-            selfHost.Close();        }
+            selfHost.Close();
+        }
     }
 }

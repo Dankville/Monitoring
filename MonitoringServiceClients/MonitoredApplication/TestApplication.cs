@@ -20,7 +20,8 @@ namespace MonitoredApplication
 
         public void TestMethod(int count)
         {
-            Console.WriteLine($"{_appName} says 'Hello World'");
+            Console.WriteLine("Monitored application did something.");
+
             Publisher.PublishMessage($"{count.ToString()}: {_appName} ran method {nameof(TestMethod)}");           
         }
     }
