@@ -10,6 +10,8 @@ namespace MonitoredApplication
     {
         static void Main(string[] args)
         {
+            Publisher publisher = Publisher.Instance();
+
             List<TestApplication> apps = new List<TestApplication>()
             {
                 new TestApplication("Test app one")

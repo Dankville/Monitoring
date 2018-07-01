@@ -18,11 +18,20 @@ namespace PubSubMonitoringService
 
         [OperationContract(IsOneWay = false)]
         void PublishMonitorMessage(string message);
+
+        [OperationContract(IsOneWay = true)]
+        void MonitoredApplicationHello();
     }
     
     public interface IPubSubMonitoringContract
     {
         [OperationContract(IsOneWay = true)]
         void PublishMonitorMessageRan(string message);
+
+        [OperationContract(IsOneWay = true)]
+        void PublishUnsubscribeMessage();
+
+        [OperationContract(IsOneWay = true)]
+        void PublishSubscribeMessage();
     }
 }

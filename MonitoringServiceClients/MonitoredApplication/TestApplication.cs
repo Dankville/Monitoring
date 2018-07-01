@@ -22,7 +22,10 @@ namespace MonitoredApplication
         {
             Console.WriteLine("Monitored application did something.");
 
-            Publisher.PublishMessage($"{count.ToString()}: {_appName} ran method {nameof(TestMethod)}");           
+            if (Publisher.MonitoringEnabled)
+            {
+                Publisher.PublishMessage($"{count.ToString()}: {_appName} ran method {nameof(TestMethod)}");
+            }
         }
     }
 }

@@ -17,7 +17,7 @@ namespace PubSubMonitoringServiceHost
             Uri subscriptionAddress = new Uri("http://localhost:9000/PubSubMonitoringService/");
             Uri publishingAddress = new Uri("net.tcp://localhost:9001/PubSubMonitoringService/");
 
-            ServiceHost selfHost = new ServiceHost(typeof(PubSubMonitoringService.PubSubMonitoringService), subscriptionAddress);
+            ServiceHost selfHost = new ServiceHost(PubSubMonitoringService.PubSubMonitoringService.Instance(), subscriptionAddress);
             // Binding for handling subscriptions the subscriptions.
             WSDualHttpBinding subscriptionBinding = new WSDualHttpBinding();
             selfHost.AddServiceEndpoint(typeof(IPubSubMonitoringService), subscriptionBinding, subscriptionAddress);
