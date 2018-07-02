@@ -40,13 +40,25 @@ namespace MonitoringServiceClients
             MonitoredEventHandler callbackHandler = new MonitoredEventHandler(ShowMessage);
             MonitoredEventOccured += callbackHandler;
 
-            Console.WriteLine("Monitor started, press [enter] to subscribe.");
-            Console.ReadLine();
-            client.Subscribe();
-            Console.WriteLine("Monitor subscribed, press [enter] to unsubscribe.");
-            Console.ReadLine();
-            client.UnSubscribe();
-            Console.ReadLine();
+            bool keepGoing = true;
+            Console.WriteLine("Press [s] to subscribe.");
+            while (keepGoing)
+            {
+                string answer = Console.ReadLine();
+                switch (answer)
+                {
+                    case "u":
+                        client.UnSubscribe();
+                        Console.WriteLine("Press [s] to subscribe.");
+                        break;
+                    case "s":
+                        client.Subscribe();
+                        Console.WriteLine("Press [u] to unsubscribe.");
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
 
         public void ShowMessage(string message)

@@ -50,6 +50,8 @@ namespace PubSubMonitoringService
         {
             Console.WriteLine("UnSubscribed");
 
+            MonitoringMessageEvent -= _monitorMessageHandler;
+
             // notify Application that it is no longer monitored.
             _monitoredAppHelloCallback.PublishUnsubscribeMessage();
         }
