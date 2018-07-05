@@ -22,9 +22,8 @@
     <MetadataSource Address="http://localhost:9000/PubSubMonitoringService/" Protocol="http" SourceId="1" />
   </MetadataSources>
   <Metadata>
+    <MetadataFile FileName="MonitoringService.wsdl" MetadataType="Wsdl" ID="604b2c2c-0c92-449f-a919-4bf8516cfe4a" SourceId="1" SourceUrl="http://localhost:9000/PubSubMonitoringService/" />
     <MetadataFile FileName="item2.xsd" MetadataType="Schema" ID="1ee93c64-76cb-494e-bc35-862081e5c888" SourceId="1" SourceUrl="http://localhost:9000/PubSubMonitoringService/?xsd=xsd1" />
-    <MetadataFile FileName="PubSubMonitoringService.wsdl" MetadataType="Wsdl" ID="ef61c7a6-e623-459b-91f1-1f3522d7ce2e" SourceId="1" SourceUrl="http://localhost:9000/PubSubMonitoringService/?wsdl" />
-    <MetadataFile FileName="item.disco" MetadataType="Disco" ID="f4f88465-0fa7-4256-aada-51f63c4fade8" SourceId="1" SourceUrl="http://localhost:9000/PubSubMonitoringService/?disco" />
     <MetadataFile FileName="item21.xsd" MetadataType="Schema" ID="89900748-4fff-4771-ae0f-a104a5e0086b" SourceId="1" SourceUrl="http://localhost:9000/PubSubMonitoringService/?xsd=xsd0" />
   </Metadata>
   <Extensions>

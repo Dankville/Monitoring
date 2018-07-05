@@ -3,13 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
 using System.ServiceModel;
 
-namespace MonitoringWindowsService
+namespace MonitoringWASService
 {
     [ServiceBehavior(InstanceContextMode = InstanceContextMode.Single)]
-    public class MonitoringService : IPubSubMonitoringService
+    class MonitoringService : IPubSubMonitoringService
     {
         // calls to Monitor.
         IPubSubMonitoringContract _monitorMessageCalls = null;

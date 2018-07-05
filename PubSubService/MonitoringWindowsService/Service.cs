@@ -15,7 +15,6 @@ namespace MonitoringWindowsService
     {
         public ServiceHost serviceHost = null;
         
-
         public MonitoringWindowsService()
         {
             ServiceName = "PubSubMonitoringService";
@@ -41,10 +40,9 @@ namespace MonitoringWindowsService
             WSDualHttpBinding subscriptionBinding = new WSDualHttpBinding();
             serviceHost.AddServiceEndpoint(typeof(IPubSubMonitoringService), subscriptionBinding, subscriptionAddress);
 
-            // Binding for handling messages. We use NetTcpBinding because it's way faster.
+            // Binding for handling monitoring messages. We use NetTcpBinding here because it's way faster.
             NetTcpBinding publishBinding = new NetTcpBinding(SecurityMode.None, false);
             serviceHost.AddServiceEndpoint(typeof(IPubSubMonitoringService), publishBinding, publishingAddress);
-
 
             ServiceMetadataBehavior smb = new ServiceMetadataBehavior();
             smb.HttpGetEnabled = true;

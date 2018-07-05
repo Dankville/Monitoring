@@ -33,5 +33,8 @@ namespace PubSubMonitoringService
 
         [OperationContract(IsOneWay = true)]
         void PublishSubscribeMessage();
+
+        [OperationContract(IsOneWay = true)]
+        void ErrorOccured(string exceptionMessage);
     }
 }

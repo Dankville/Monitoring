@@ -37,6 +37,11 @@
       <xs:sequence />
     </xs:complexType>
   </xs:element>
+  <xs:element name="MonitoredApplicationHelloResponse">
+    <xs:complexType>
+      <xs:sequence />
+    </xs:complexType>
+  </xs:element>
   <xs:element name="PublishMonitorMessageRan">
     <xs:complexType>
       <xs:sequence>
@@ -52,6 +57,13 @@
   <xs:element name="PublishSubscribeMessage">
     <xs:complexType>
       <xs:sequence />
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="ErrorOccured">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="exceptionMessage" nillable="true" type="xs:string" />
+      </xs:sequence>
     </xs:complexType>
   </xs:element>
 </xs:schema>

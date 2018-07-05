@@ -67,6 +67,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Host.cs" />
     <Compile Include="PubSubService.svc.cs">
       <DependentUpon>PubSubService.svc</DependentUpon>
     </Compile>

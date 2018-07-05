@@ -9,78 +9,91 @@ using System.Text;
 namespace PubSubMonitoringService
 {
     [ServiceBehavior(InstanceContextMode = InstanceContextMode.Single)]
-    public class PubSubMonitoringService : IPubSubMonitoringService
+    public class MonitoringService : IPubSubMonitoringService
     {
-        IPubSubMonitoringContract _serviceCallback = null;
-        IPubSubMonitoringContract _monitoredAppHelloCallback = null;
+        public Dictionary<string, IPubSubMonitoringContract> MonitoredApplications = new Dictionary<string, IPubSubMonitoringContract>();
 
-        // Monitoring Messages
-        public delegate void MonitoringMessageEventHandler(string message);
-        public static event MonitoringMessageEventHandler MonitoringMessageEvent;
-        MonitoringMessageEventHandler _monitorMessageHandler = null;
-        
-        private static PubSubMonitoringService _Instance = null;
+        private MonitoringService() { }
 
-        private PubSubMonitoringService() { }
+        private static MonitoringService _Instance = null;
 
-        public static PubSubMonitoringService Instance()
+        public static MonitoringService Instance()
         {
             if (_Instance == null)
             {
-                _Instance =new PubSubMonitoringService();
+                _Instance = new MonitoringService();
             }
             return _Instance;
         }
-        
-        // Contract functions
-        void IPubSubMonitoringService.Subscribe()
+
+
+        // calls to Monitor.
+        IPubSubMonitoringContract _monitorMessageCalls = null;
+        // calls to monitored application.
+        IPubSubMonitoringContract _monitoredAppMessageCalls = null;
+
+        public delegate void MethodRanEventHandler(string message);
+        public static event MethodRanEventHandler MonitoringMessageEvent = null;
+        MethodRanEventHandler _subscribedMonitorHandler = null;
+
+        public void Subscribe()
         {
-            _serviceCallback = OperationContext.Current.GetCallbackChannel<IPubSubMonitoringContract>();
+            _monitorMessageCalls = OperationContext.Current.GetCallbackChannel<IPubSubMonitoringContract>();
+            _subscribedMonitorHandler = new MethodRanEventHandler(PublishMethodRanHandler);
+            MonitoringMessageEvent = _subscribedMonitorHandler;
 
-            Console.WriteLine("Subscribed");
-            // Set eventhandler for monitoring messages in direction of Monitored application -> Monitor
-            _monitorMessageHandler = new MonitoringMessageEventHandler(PublishMonitoringEventHandler);
-            MonitoringMessageEvent += _monitorMessageHandler;
-
-            // notify Application that it is being monitored.
-            _monitoredAppHelloCallback.PublishSubscribeMessage();
-        }
-
-        void IPubSubMonitoringService.UnSubscribe()
-        {
-            Console.WriteLine("UnSubscribed");
-
-            MonitoringMessageEvent -= _monitorMessageHandler;
-
-            // notify Application that it is no longer monitored.
-            _monitoredAppHelloCallback.PublishUnsubscribeMessage();
-        }
-
-        void IPubSubMonitoringService.PublishMonitorMessage(string message)
-        {
             try
             {
-                MonitoringMessageEvent(message);
+                _monitoredAppMessageCalls.PublishSubscribeMessage();
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Message not send because no subscriptions.");
+                try
+                {
+                    _monitorMessageCalls.ErrorOccured($"An error occured in the MonitoringWindowsService:\n{ex.Message}");
+                }
+                catch (Exception exc)
+                {
+                    // log the exception.
+                }
             }
         }
 
-        void IPubSubMonitoringService.MonitoredApplicationHello()
+        public void UnSubscribe()
         {
-            Console.WriteLine("Monitored App says hello");
-            // Application which can be monitored presents itself to the monitoring service,
-            // and a callback channel is created so calls can be made from the service to publisher of monitored applications 
-            _monitoredAppHelloCallback = OperationContext.Current.GetCallbackChannel<IPubSubMonitoringContract>();
+            MonitoringMessageEvent = null;
+
+            try
+            {
+                _monitoredAppMessageCalls.PublishUnsubscribeMessage();
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    _monitorMessageCalls.ErrorOccured($"An error occured in the MonitoringWindowsService:\n{ex.Message}");
+                }
+                catch (Exception exc)
+                {
+                    // log the exception.
+                }
+            }
         }
 
-
-        // Monitoring Message Event handler
-        void PublishMonitoringEventHandler(string message)
+        public void PublishMonitorMessage(string message)
         {
-            _serviceCallback.PublishMonitorMessageRan(message);
+            MonitoringMessageEvent?.Invoke(message);
+        }
+
+        public void PublishMethodRanHandler(string message)
+        {
+            _monitorMessageCalls.PublishMonitorMessageRan(message);
+        }
+
+        public void MonitoredApplicationHello()
+        {
+            // setup a channel to communicate from monitoring service to monitoredApplication.
+            _monitoredAppMessageCalls = OperationContext.Current.GetCallbackChannel<IPubSubMonitoringContract>();
         }
     }
 }

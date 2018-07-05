@@ -21,10 +21,10 @@ namespace MonitoredApplication.MonitoringService {
         [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPubSubMonitoringService/Subscribe", ReplyAction="http://tempuri.org/IPubSubMonitoringService/SubscribeResponse")]
         System.Threading.Tasks.Task SubscribeAsync();
         
-        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPubSubMonitoringService/UnSubscribe", ReplyAction="http://tempuri.org/IPubSubMonitoringService/UnSubscribeResponse")]
+        [System.ServiceModel.OperationContractAttribute(IsTerminating=true, Action="http://tempuri.org/IPubSubMonitoringService/UnSubscribe", ReplyAction="http://tempuri.org/IPubSubMonitoringService/UnSubscribeResponse")]
         void UnSubscribe();
         
-        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPubSubMonitoringService/UnSubscribe", ReplyAction="http://tempuri.org/IPubSubMonitoringService/UnSubscribeResponse")]
+        [System.ServiceModel.OperationContractAttribute(IsTerminating=true, Action="http://tempuri.org/IPubSubMonitoringService/UnSubscribe", ReplyAction="http://tempuri.org/IPubSubMonitoringService/UnSubscribeResponse")]
         System.Threading.Tasks.Task UnSubscribeAsync();
         
         [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPubSubMonitoringService/PublishMonitorMessage", ReplyAction="http://tempuri.org/IPubSubMonitoringService/PublishMonitorMessageResponse")]
@@ -33,10 +33,10 @@ namespace MonitoredApplication.MonitoringService {
         [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPubSubMonitoringService/PublishMonitorMessage", ReplyAction="http://tempuri.org/IPubSubMonitoringService/PublishMonitorMessageResponse")]
         System.Threading.Tasks.Task PublishMonitorMessageAsync(string message);
         
-        [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IPubSubMonitoringService/MonitoredApplicationHello")]
+        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPubSubMonitoringService/MonitoredApplicationHello", ReplyAction="http://tempuri.org/IPubSubMonitoringService/MonitoredApplicationHelloResponse")]
         void MonitoredApplicationHello();
         
-        [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IPubSubMonitoringService/MonitoredApplicationHello")]
+        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPubSubMonitoringService/MonitoredApplicationHello", ReplyAction="http://tempuri.org/IPubSubMonitoringService/MonitoredApplicationHelloResponse")]
         System.Threading.Tasks.Task MonitoredApplicationHelloAsync();
     }
     
@@ -51,6 +51,9 @@ namespace MonitoredApplication.MonitoringService {
         
         [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IPubSubMonitoringService/PublishSubscribeMessage")]
         void PublishSubscribeMessage();
+        
+        [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IPubSubMonitoringService/ErrorOccured")]
+        void ErrorOccured(string exceptionMessage);
     }
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel", "4.0.0.0")]

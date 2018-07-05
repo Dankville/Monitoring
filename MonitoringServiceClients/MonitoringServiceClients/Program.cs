@@ -10,7 +10,7 @@ namespace MonitoringServiceClients
     {
         static void Main(string[] args)
         {
-            Monitor monitor = new Monitor();
+            TestMonitor monitor = new TestMonitor();
         }
     }
 }

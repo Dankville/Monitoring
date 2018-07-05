@@ -14,6 +14,11 @@ namespace MonitoredApplication
         [CallbackBehavior(UseSynchronizationContext = true)]
         public class MonitoredAppCalls : IPubSubMonitoringServiceCallback
         {
+            public void ErrorOccured(string exceptionMessage)
+            {
+                // ??
+            }
+
             public void PublishMonitorMessageRan(string message)
             {
                 // does nothing since we dont get Monitoring messages here
@@ -21,11 +26,13 @@ namespace MonitoredApplication
 
             public void PublishSubscribeMessage()
             {
+                Console.WriteLine("A monitor subscribed.");
                 MonitoringEnabled = true;
             }
 
             public void PublishUnsubscribeMessage()
             {
+                Console.WriteLine("A subscribed Monitor unsubscribed.");
                 MonitoringEnabled = false;
             }
         }
@@ -34,29 +41,29 @@ namespace MonitoredApplication
 
         // should be a singleton
         private static Publisher _Instance = null;
-        private Publisher() { }
+        private Publisher()
+        {
+            InstanceContext context = new InstanceContext(new MonitoredAppCalls());
+            PubSubMonitoringServiceClient client = new PubSubMonitoringServiceClient(context, "WSDualHttpBinding_IPubSubMonitoringService");
+            client.MonitoredApplicationHello();
+            Console.WriteLine("Monitoring app said hello.");
+        }
 
         public static Publisher Instance()
         {
             if (_Instance == null)
             {
                 _Instance = new Publisher();
-                InstanceContext context = new InstanceContext(new MonitoredAppCalls());
-                PubSubMonitoringServiceClient client = new PubSubMonitoringServiceClient(context, "WSDualHttpBinding_IPubSubMonitoringService");
-                client.MonitoredApplicationHello();
             }
             return _Instance;
         }
-
-        //static InstanceContext _context = null;
-        //static PubSubMonitoringServiceClient _client = null;
-
+        
         public static void PublishMessage(string message)
         {
-            InstanceContext _context = new InstanceContext(new MonitoredAppCalls());
-            PubSubMonitoringServiceClient _client = new PubSubMonitoringServiceClient(_context, "NetTcpBinding_IPubSubMonitoringService");
-            _client.PublishMonitorMessage(message);
-            _client.Close();
+            InstanceContext context = new InstanceContext(new MonitoredAppCalls());
+            PubSubMonitoringServiceClient client = new PubSubMonitoringServiceClient(context, "NetTcpBinding_IPubSubMonitoringService");
+            client.PublishMonitorMessage(message);
+            client.Close();
         }
     }
 }
