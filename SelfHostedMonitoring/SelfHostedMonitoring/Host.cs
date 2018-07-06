@@ -8,7 +8,7 @@ using System.ServiceModel.Description;
 
 namespace SelfHostedMonitoring
 {
-    public class Host : IDisposable
+    public sealed class Host : IDisposable
     {
         private ServiceHost _SelfHost = null;
         public MonitorListener MonitorService => MonitorListener.Instance();
@@ -37,7 +37,6 @@ namespace SelfHostedMonitoring
             _SelfHost.Open();
 
             Console.WriteLine($"The service is ready.");
-            Console.WriteLine("Press [enter] to terminate.");
         }
 
         private static Host _Instance = null;

@@ -15,6 +15,9 @@ namespace SelfHostedMonitoring
 
         [OperationContract(IsOneWay = false, IsInitiating = true)]
         void UnSubscribe();
+
+        [OperationContract(IsOneWay = true)]
+        void EndHeartBeat();
     }
 
     public interface IMonitoringContract
@@ -25,7 +28,8 @@ namespace SelfHostedMonitoring
         [OperationContract(IsOneWay = true)]
         void ErrorOccured(string exceptionMessage);
 
-        [OperationContract(IsOneWay = false)]
-        void HeartBeat();
+        [OperationContract(IsOneWay = false, AsyncPattern = true)]
+        IAsyncResult BeginHeartBeat(AsyncCallback callback, object stateObject);
+        void EndHeartBeat(IAsyncResult result);
     }
 }

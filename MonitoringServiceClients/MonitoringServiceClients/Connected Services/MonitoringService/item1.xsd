@@ -20,6 +20,11 @@
       <xs:sequence />
     </xs:complexType>
   </xs:element>
+  <xs:element name="EndHeartBeat">
+    <xs:complexType>
+      <xs:sequence />
+    </xs:complexType>
+  </xs:element>
   <xs:element name="PublishMonitorMessageRan">
     <xs:complexType>
       <xs:sequence>

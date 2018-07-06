@@ -17,11 +17,12 @@ namespace MonitoringServiceClients
             public void ErrorOccured(string exceptionMessage)
             {
                 Console.WriteLine(exceptionMessage);
+                // log error
             }
 
             public void HeartBeat()
             {
-                throw new NotImplementedException();
+                TestMonitor.HeartBeatReceived();
             }
 
             public void PublishMonitorMessageRan(string message)
@@ -32,8 +33,7 @@ namespace MonitoringServiceClients
 
         public delegate void MonitoredEventHandler(string message);
         public static event MonitoredEventHandler MonitoredEventOccured;
-
-        private InstanceContext _context = null;
+        
         private MonitoringListenerClient _client = null;
 
         public bool Subscribed { get; private set; } = false;
@@ -65,8 +65,8 @@ namespace MonitoringServiceClients
         {
             try
             {
-                _context = new InstanceContext(new MonitoringServiceCall());
-                _client = new MonitoringListenerClient(_context, "NetTcpBinding_IMonitoringListener");
+                InstanceContext context = new InstanceContext(new MonitoringServiceCall());
+                _client = new MonitoringListenerClient(context, "NetTcpBinding_IMonitoringListener");
                 _client.Subscribe();
 
                 MonitoredEventHandler callFromMonitoredAppHandler = new MonitoredEventHandler(ShowMessage);
@@ -92,11 +92,18 @@ namespace MonitoringServiceClients
             }
         }
 
+        public static void HeartBeatReceived()
+        {
+            InstanceContext context = new InstanceContext(new MonitoringServiceCall());
+            MonitoringListenerClient client = new MonitoringListenerClient(context, "NetTcpBinding_IMonitoringListener");
+            client.EndHeartBeat();
+        }
+
         public void ShowMessage(string message)
         {
             Console.WriteLine(message);
         }
-
+        
         public void Dispose()
         {
             if (Subscribed)

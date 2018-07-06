@@ -26,6 +26,12 @@ namespace MonitoringServiceClients.MonitoringService {
         
         [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMonitoringListener/UnSubscribe", ReplyAction="http://tempuri.org/IMonitoringListener/UnSubscribeResponse")]
         System.Threading.Tasks.Task UnSubscribeAsync();
+        
+        [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IMonitoringListener/EndHeartBeat")]
+        void EndHeartBeat();
+        
+        [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IMonitoringListener/EndHeartBeat")]
+        System.Threading.Tasks.Task EndHeartBeatAsync();
     }
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel", "4.0.0.0")]
@@ -83,6 +89,14 @@ namespace MonitoringServiceClients.MonitoringService {
         
         public System.Threading.Tasks.Task UnSubscribeAsync() {
             return base.Channel.UnSubscribeAsync();
+        }
+        
+        public void EndHeartBeat() {
+            base.Channel.EndHeartBeat();
+        }
+        
+        public System.Threading.Tasks.Task EndHeartBeatAsync() {
+            return base.Channel.EndHeartBeatAsync();
         }
     }
 }

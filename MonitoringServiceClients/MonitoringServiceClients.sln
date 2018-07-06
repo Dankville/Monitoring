@@ -1,11 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27703.2035
+VisualStudioVersion = 15.0.26430.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonitoringServiceClients", "MonitoringServiceClients\MonitoringServiceClients.csproj", "{9FDCA263-2D8C-4315-AEA9-4DD1564BADAD}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonitoredApplication", "MonitoredApplication\MonitoredApplication.csproj", "{A6EC54A3-1ED8-4CBB-B226-4D3BA7070650}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +15,6 @@ Global
 		{9FDCA263-2D8C-4315-AEA9-4DD1564BADAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9FDCA263-2D8C-4315-AEA9-4DD1564BADAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9FDCA263-2D8C-4315-AEA9-4DD1564BADAD}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A6EC54A3-1ED8-4CBB-B226-4D3BA7070650}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A6EC54A3-1ED8-4CBB-B226-4D3BA7070650}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A6EC54A3-1ED8-4CBB-B226-4D3BA7070650}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A6EC54A3-1ED8-4CBB-B226-4D3BA7070650}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

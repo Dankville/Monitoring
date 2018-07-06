@@ -26,6 +26,9 @@
   <wsdl:message name="IMonitoringListener_UnSubscribe_OutputMessage">
     <wsdl:part name="parameters" element="tns:UnSubscribeResponse" />
   </wsdl:message>
+  <wsdl:message name="IMonitoringListener_EndHeartBeat_InputMessage">
+    <wsdl:part name="parameters" element="tns:EndHeartBeat" />
+  </wsdl:message>
   <wsdl:message name="IMonitoringListener_PublishMonitorMessageRan_OutputCallbackMessage">
     <wsdl:part name="parameters" element="tns:PublishMonitorMessageRan" />
   </wsdl:message>
@@ -46,6 +49,9 @@
     <wsdl:operation msc:isInitiating="true" msc:isTerminating="false" name="UnSubscribe">
       <wsdl:input wsaw:Action="http://tempuri.org/IMonitoringListener/UnSubscribe" message="tns:IMonitoringListener_UnSubscribe_InputMessage" />
       <wsdl:output wsaw:Action="http://tempuri.org/IMonitoringListener/UnSubscribeResponse" message="tns:IMonitoringListener_UnSubscribe_OutputMessage" />
+    </wsdl:operation>
+    <wsdl:operation msc:isInitiating="true" msc:isTerminating="false" name="EndHeartBeat">
+      <wsdl:input wsaw:Action="http://tempuri.org/IMonitoringListener/EndHeartBeat" message="tns:IMonitoringListener_EndHeartBeat_InputMessage" />
     </wsdl:operation>
     <wsdl:operation msc:isInitiating="true" msc:isTerminating="false" name="PublishMonitorMessageRan">
       <wsdl:output wsaw:Action="http://tempuri.org/IMonitoringListener/PublishMonitorMessageRan" message="tns:IMonitoringListener_PublishMonitorMessageRan_OutputCallbackMessage" />
@@ -78,6 +84,12 @@
       <wsdl:output>
         <soap12:body use="literal" />
       </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="EndHeartBeat">
+      <soap12:operation soapAction="http://tempuri.org/IMonitoringListener/EndHeartBeat" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
     </wsdl:operation>
     <wsdl:operation name="PublishMonitorMessageRan">
       <soap12:operation soapAction="http://tempuri.org/IMonitoringListener/PublishMonitorMessageRan" style="document" />
