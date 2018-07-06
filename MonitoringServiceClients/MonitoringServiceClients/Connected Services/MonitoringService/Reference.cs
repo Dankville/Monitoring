@@ -12,75 +12,60 @@ namespace MonitoringServiceClients.MonitoringService {
     
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel", "4.0.0.0")]
-    [System.ServiceModel.ServiceContractAttribute(ConfigurationName="MonitoringService.IPubSubMonitoringService", CallbackContract=typeof(MonitoringServiceClients.MonitoringService.IPubSubMonitoringServiceCallback), SessionMode=System.ServiceModel.SessionMode.Required)]
-    public interface IPubSubMonitoringService {
+    [System.ServiceModel.ServiceContractAttribute(ConfigurationName="MonitoringService.IMonitoringListener", CallbackContract=typeof(MonitoringServiceClients.MonitoringService.IMonitoringListenerCallback), SessionMode=System.ServiceModel.SessionMode.Required)]
+    public interface IMonitoringListener {
         
-        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPubSubMonitoringService/Subscribe", ReplyAction="http://tempuri.org/IPubSubMonitoringService/SubscribeResponse")]
+        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMonitoringListener/Subscribe", ReplyAction="http://tempuri.org/IMonitoringListener/SubscribeResponse")]
         void Subscribe();
         
-        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPubSubMonitoringService/Subscribe", ReplyAction="http://tempuri.org/IPubSubMonitoringService/SubscribeResponse")]
+        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMonitoringListener/Subscribe", ReplyAction="http://tempuri.org/IMonitoringListener/SubscribeResponse")]
         System.Threading.Tasks.Task SubscribeAsync();
         
-        [System.ServiceModel.OperationContractAttribute(IsTerminating=true, Action="http://tempuri.org/IPubSubMonitoringService/UnSubscribe", ReplyAction="http://tempuri.org/IPubSubMonitoringService/UnSubscribeResponse")]
+        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMonitoringListener/UnSubscribe", ReplyAction="http://tempuri.org/IMonitoringListener/UnSubscribeResponse")]
         void UnSubscribe();
         
-        [System.ServiceModel.OperationContractAttribute(IsTerminating=true, Action="http://tempuri.org/IPubSubMonitoringService/UnSubscribe", ReplyAction="http://tempuri.org/IPubSubMonitoringService/UnSubscribeResponse")]
+        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMonitoringListener/UnSubscribe", ReplyAction="http://tempuri.org/IMonitoringListener/UnSubscribeResponse")]
         System.Threading.Tasks.Task UnSubscribeAsync();
-        
-        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPubSubMonitoringService/PublishMonitorMessage", ReplyAction="http://tempuri.org/IPubSubMonitoringService/PublishMonitorMessageResponse")]
-        void PublishMonitorMessage(string message);
-        
-        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPubSubMonitoringService/PublishMonitorMessage", ReplyAction="http://tempuri.org/IPubSubMonitoringService/PublishMonitorMessageResponse")]
-        System.Threading.Tasks.Task PublishMonitorMessageAsync(string message);
-        
-        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPubSubMonitoringService/MonitoredApplicationHello", ReplyAction="http://tempuri.org/IPubSubMonitoringService/MonitoredApplicationHelloResponse")]
-        void MonitoredApplicationHello();
-        
-        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IPubSubMonitoringService/MonitoredApplicationHello", ReplyAction="http://tempuri.org/IPubSubMonitoringService/MonitoredApplicationHelloResponse")]
-        System.Threading.Tasks.Task MonitoredApplicationHelloAsync();
     }
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel", "4.0.0.0")]
-    public interface IPubSubMonitoringServiceCallback {
+    public interface IMonitoringListenerCallback {
         
-        [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IPubSubMonitoringService/PublishMonitorMessageRan")]
+        [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IMonitoringListener/PublishMonitorMessageRan")]
         void PublishMonitorMessageRan(string message);
         
-        [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IPubSubMonitoringService/PublishUnsubscribeMessage")]
-        void PublishUnsubscribeMessage();
-        
-        [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IPubSubMonitoringService/PublishSubscribeMessage")]
-        void PublishSubscribeMessage();
-        
-        [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IPubSubMonitoringService/ErrorOccured")]
+        [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IMonitoringListener/ErrorOccured")]
         void ErrorOccured(string exceptionMessage);
+        
+        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMonitoringListener/HeartBeat", ReplyAction="http://tempuri.org/IMonitoringListener/HeartBeatResponse")]
+        void HeartBeat();
     }
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel", "4.0.0.0")]
-    public interface IPubSubMonitoringServiceChannel : MonitoringServiceClients.MonitoringService.IPubSubMonitoringService, System.ServiceModel.IClientChannel {
+    public interface IMonitoringListenerChannel : MonitoringServiceClients.MonitoringService.IMonitoringListener, System.ServiceModel.IClientChannel {
     }
     
     [System.Diagnostics.DebuggerStepThroughAttribute()]
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel", "4.0.0.0")]
-    public partial class PubSubMonitoringServiceClient : System.ServiceModel.DuplexClientBase<MonitoringServiceClients.MonitoringService.IPubSubMonitoringService>, MonitoringServiceClients.MonitoringService.IPubSubMonitoringService {
+    public partial class MonitoringListenerClient : System.ServiceModel.DuplexClientBase<MonitoringServiceClients.MonitoringService.IMonitoringListener>, MonitoringServiceClients.MonitoringService.IMonitoringListener {
         
-        public PubSubMonitoringServiceClient(System.ServiceModel.InstanceContext callbackInstance) : 
+        public MonitoringListenerClient(System.ServiceModel.InstanceContext callbackInstance) : 
                 base(callbackInstance) {
         }
         
-        public PubSubMonitoringServiceClient(System.ServiceModel.InstanceContext callbackInstance, string endpointConfigurationName) : 
+        public MonitoringListenerClient(System.ServiceModel.InstanceContext callbackInstance, string endpointConfigurationName) : 
                 base(callbackInstance, endpointConfigurationName) {
         }
         
-        public PubSubMonitoringServiceClient(System.ServiceModel.InstanceContext callbackInstance, string endpointConfigurationName, string remoteAddress) : 
+        public MonitoringListenerClient(System.ServiceModel.InstanceContext callbackInstance, string endpointConfigurationName, string remoteAddress) : 
                 base(callbackInstance, endpointConfigurationName, remoteAddress) {
         }
         
-        public PubSubMonitoringServiceClient(System.ServiceModel.InstanceContext callbackInstance, string endpointConfigurationName, System.ServiceModel.EndpointAddress remoteAddress) : 
+        public MonitoringListenerClient(System.ServiceModel.InstanceContext callbackInstance, string endpointConfigurationName, System.ServiceModel.EndpointAddress remoteAddress) : 
                 base(callbackInstance, endpointConfigurationName, remoteAddress) {
         }
         
-        public PubSubMonitoringServiceClient(System.ServiceModel.InstanceContext callbackInstance, System.ServiceModel.Channels.Binding binding, System.ServiceModel.EndpointAddress remoteAddress) : 
+        public MonitoringListenerClient(System.ServiceModel.InstanceContext callbackInstance, System.ServiceModel.Channels.Binding binding, System.ServiceModel.EndpointAddress remoteAddress) : 
                 base(callbackInstance, binding, remoteAddress) {
         }
         
@@ -98,22 +83,6 @@ namespace MonitoringServiceClients.MonitoringService {
         
         public System.Threading.Tasks.Task UnSubscribeAsync() {
             return base.Channel.UnSubscribeAsync();
-        }
-        
-        public void PublishMonitorMessage(string message) {
-            base.Channel.PublishMonitorMessage(message);
-        }
-        
-        public System.Threading.Tasks.Task PublishMonitorMessageAsync(string message) {
-            return base.Channel.PublishMonitorMessageAsync(message);
-        }
-        
-        public void MonitoredApplicationHello() {
-            base.Channel.MonitoredApplicationHello();
-        }
-        
-        public System.Threading.Tasks.Task MonitoredApplicationHelloAsync() {
-            return base.Channel.MonitoredApplicationHelloAsync();
         }
     }
 }

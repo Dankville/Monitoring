@@ -12,26 +12,21 @@ namespace MonitoringServiceClients
     public class TestMonitor : IDisposable
     {
         [CallbackBehavior(UseSynchronizationContext = true)]
-        public class MonitoringServiceCall : IPubSubMonitoringServiceCallback
+        public class MonitoringServiceCall : IMonitoringListenerCallback
         {
             public void ErrorOccured(string exceptionMessage)
             {
                 Console.WriteLine(exceptionMessage);
             }
 
+            public void HeartBeat()
+            {
+                throw new NotImplementedException();
+            }
+
             public void PublishMonitorMessageRan(string message)
             {
                 TestMonitor.MonitoredEventOccured(message);
-            }
-
-            public void PublishSubscribeMessage()
-            {
-                // Doesnt do anything because this app can't be subscribed too.
-            }
-
-            public void PublishUnsubscribeMessage()
-            {
-                // Doesnt do anything because this app can't be subscribed too.
             }
         }
 
@@ -39,7 +34,7 @@ namespace MonitoringServiceClients
         public static event MonitoredEventHandler MonitoredEventOccured;
 
         private InstanceContext _context = null;
-        private PubSubMonitoringServiceClient _client = null;
+        private MonitoringListenerClient _client = null;
 
         public bool Subscribed { get; private set; } = false;
         
@@ -71,7 +66,7 @@ namespace MonitoringServiceClients
             try
             {
                 _context = new InstanceContext(new MonitoringServiceCall());
-                _client = new PubSubMonitoringServiceClient(_context, "WSDualHttpBinding_IPubSubMonitoringService");
+                _client = new MonitoringListenerClient(_context, "NetTcpBinding_IMonitoringListener");
                 _client.Subscribe();
 
                 MonitoredEventHandler callFromMonitoredAppHandler = new MonitoredEventHandler(ShowMessage);
