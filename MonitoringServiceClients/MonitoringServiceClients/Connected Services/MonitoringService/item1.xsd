@@ -39,12 +39,7 @@
       </xs:sequence>
     </xs:complexType>
   </xs:element>
-  <xs:element name="HeartBeat">
-    <xs:complexType>
-      <xs:sequence />
-    </xs:complexType>
-  </xs:element>
-  <xs:element name="HeartBeatResponse">
+  <xs:element name="BeginHeartBeat">
     <xs:complexType>
       <xs:sequence />
     </xs:complexType>

@@ -28,8 +28,7 @@ namespace SelfHostedMonitoring
         [OperationContract(IsOneWay = true)]
         void ErrorOccured(string exceptionMessage);
 
-        [OperationContract(IsOneWay = false, AsyncPattern = true)]
-        IAsyncResult BeginHeartBeat(AsyncCallback callback, object stateObject);
-        void EndHeartBeat(IAsyncResult result);
+        [OperationContract(IsOneWay = true)]
+        void BeginHeartBeat();
     }
 }

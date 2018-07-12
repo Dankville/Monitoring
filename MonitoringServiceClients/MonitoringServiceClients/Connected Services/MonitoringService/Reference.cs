@@ -43,8 +43,8 @@ namespace MonitoringServiceClients.MonitoringService {
         [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IMonitoringListener/ErrorOccured")]
         void ErrorOccured(string exceptionMessage);
         
-        [System.ServiceModel.OperationContractAttribute(Action="http://tempuri.org/IMonitoringListener/HeartBeat", ReplyAction="http://tempuri.org/IMonitoringListener/HeartBeatResponse")]
-        void HeartBeat();
+        [System.ServiceModel.OperationContractAttribute(IsOneWay=true, Action="http://tempuri.org/IMonitoringListener/BeginHeartBeat")]
+        void BeginHeartBeat();
     }
     
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.ServiceModel", "4.0.0.0")]

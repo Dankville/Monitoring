@@ -20,7 +20,7 @@ namespace MonitoringServiceClients
                 // log error
             }
 
-            public void HeartBeat()
+            public void BeginHeartBeat()
             {
                 TestMonitor.HeartBeatReceived();
             }
@@ -94,6 +94,7 @@ namespace MonitoringServiceClients
 
         public static void HeartBeatReceived()
         {
+            Console.WriteLine("Heartbeat received");
             InstanceContext context = new InstanceContext(new MonitoringServiceCall());
             MonitoringListenerClient client = new MonitoringListenerClient(context, "NetTcpBinding_IMonitoringListener");
             client.EndHeartBeat();

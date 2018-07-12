@@ -15,7 +15,6 @@ namespace TestApplication
         {
             while (true)
             {
-                Console.Write("Message you want to send: ");
                 string message = Console.ReadLine();
 
                 host.MonitorService.PublishMonitorMessage(message);

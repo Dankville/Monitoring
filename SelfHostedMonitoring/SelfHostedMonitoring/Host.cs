@@ -20,7 +20,7 @@ namespace SelfHostedMonitoring
                 _SelfHost.Close();
             }
 
-            Uri MetadataAddress = new Uri("http://localhost:9000/PubSubMonitoringServiceMetaData/");
+            //Uri MetadataAddress = new Uri("http://localhost:9000/PubSubMonitoringServiceMetaData/");
             Uri PublishingAddress = new Uri("net.tcp://localhost:9001/PubSubMonitoringService/");
 
             _SelfHost = new ServiceHost(MonitorService, PublishingAddress);
@@ -28,9 +28,7 @@ namespace SelfHostedMonitoring
             NetTcpBinding PublishBinding = new NetTcpBinding(SecurityMode.None, false);
             WSDualHttpBinding MetadataBinding = new WSDualHttpBinding();
             ServiceMetadataBehavior smb = new ServiceMetadataBehavior();
-            smb.HttpGetEnabled = true;
-            smb.HttpGetUrl = MetadataAddress;
-            _SelfHost.Description.Behaviors.Add(smb);
+            
 
             _SelfHost.AddServiceEndpoint(typeof(IMonitoringListener), PublishBinding, PublishingAddress);
 

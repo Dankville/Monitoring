@@ -15,11 +15,10 @@ namespace SelfHostedMonitoring
         private static MonitorListener _Instance = null;
 
         private CancellationToken _CancellationToken;
-        private int _HeartBeatCounter;
+        private int _HeartBeatCounter = 0;
+        private bool _HeartBeatReceived = false;
 
-        private MonitorListener()
-        {
-        }
+        private MonitorListener(){  }
 
         public static MonitorListener Instance()
         {
@@ -38,30 +37,38 @@ namespace SelfHostedMonitoring
         MethodRanEventHandler _subscribedMonitorHandler = null;
 
         // Contract methods
-        // called by via RPC by monitor
+        // called via RPC by monitor
         public void Subscribe()
         {
-            _monitorMessageCalls = OperationContext.Current.GetCallbackChannel<IMonitoringContract>();
-            _subscribedMonitorHandler = new MethodRanEventHandler(PublishMethodRanHandler);
-            MonitoringMessageEvent = _subscribedMonitorHandler;
+            if (_monitorMessageCalls == null)
+            {
+                Console.WriteLine("Subscribed");
+                _monitorMessageCalls = OperationContext.Current.GetCallbackChannel<IMonitoringContract>();
+                _subscribedMonitorHandler = new MethodRanEventHandler(PublishMethodRanHandler);
+                MonitoringMessageEvent = _subscribedMonitorHandler;
 
-            _HeartBeatCounter = 0;
-            _CancellationToken = new CancellationToken(false);
-            HeartBeatTask();
+                HeartBeatTask();
+            }
         }
 
-        // called by via RPC by monitor
+        // called via RPC by monitor
         public void UnSubscribe()
         {
-            MonitoringMessageEvent = null;
+            Console.WriteLine("UnSubscribed");
+            MonitoringMessageEvent = null;   
             _CancellationToken = new CancellationToken(true);
+            _monitorMessageCalls = null;
         }
 
-        // called by via RPC by monitor
+        // called via RPC by monitor.
+        // Callback from BeginHeartBeat on client.
         public void EndHeartBeat()
         {
+            Console.WriteLine("[x] EndHeartBeat");
+            _HeartBeatReceived = true;
             _HeartBeatCounter = 0;
         }
+
 
         // MonitorListener methods
         public void PublishMonitorMessage(string message)
@@ -73,21 +80,17 @@ namespace SelfHostedMonitoring
         {
             try
             {
+                _CancellationToken = new CancellationToken(false);
                 await Task.Run(async () =>
                 {
                     while (true)
                     {
-                        _monitorMessageCalls.BeginHeartBeat(delegate (IAsyncResult ar)
-                        {
-                            _HeartBeatCounter++;
-                            Console.WriteLine(_HeartBeatCounter);
-                            _monitorMessageCalls.EndHeartBeat(ar);
-                        }, null);
+                        Task.Run(() => BeginHeartBeat()).Wait();
 
-                        await Task.Delay(5000, _CancellationToken);
+                        await Task.Delay(1000, _CancellationToken);
                         if (_CancellationToken.IsCancellationRequested || _HeartBeatCounter >= 5)
                         {
-                            UnSubscribe();
+                            ConnectionLost();
                             break;
                         }
                     }
@@ -106,7 +109,32 @@ namespace SelfHostedMonitoring
             }
         }
 
-        // Even handlers
+        private void BeginHeartBeat()
+        {
+            _HeartBeatCounter++;
+            _HeartBeatReceived = false;
+            if (_monitorMessageCalls != null)
+            {
+                Console.WriteLine("[o]BeginHeartbeat sent");
+                try
+                {
+                    _monitorMessageCalls.BeginHeartBeat();
+                }
+                catch (Exception ex)
+                {
+                    // Connectionlost
+                }
+            }
+        }
+
+        private void ConnectionLost()
+        {
+            Console.WriteLine("Connection lost.");
+            MonitoringMessageEvent = null;
+            _monitorMessageCalls = null;
+        }
+
+        // Event handlers
         private void PublishMethodRanHandler(string message)
         {
             try

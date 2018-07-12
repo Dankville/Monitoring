@@ -35,11 +35,8 @@
   <wsdl:message name="IMonitoringListener_ErrorOccured_OutputCallbackMessage">
     <wsdl:part name="parameters" element="tns:ErrorOccured" />
   </wsdl:message>
-  <wsdl:message name="IMonitoringListener_HeartBeat_OutputCallbackMessage">
-    <wsdl:part name="parameters" element="tns:HeartBeat" />
-  </wsdl:message>
-  <wsdl:message name="IMonitoringListener_HeartBeat_InputCallbackMessage">
-    <wsdl:part name="parameters" element="tns:HeartBeatResponse" />
+  <wsdl:message name="IMonitoringListener_BeginHeartBeat_OutputCallbackMessage">
+    <wsdl:part name="parameters" element="tns:BeginHeartBeat" />
   </wsdl:message>
   <wsdl:portType msc:usingSession="true" name="IMonitoringListener">
     <wsdl:operation msc:isInitiating="true" msc:isTerminating="false" name="Subscribe">
@@ -59,9 +56,8 @@
     <wsdl:operation msc:isInitiating="true" msc:isTerminating="false" name="ErrorOccured">
       <wsdl:output wsaw:Action="http://tempuri.org/IMonitoringListener/ErrorOccured" message="tns:IMonitoringListener_ErrorOccured_OutputCallbackMessage" />
     </wsdl:operation>
-    <wsdl:operation msc:isInitiating="true" msc:isTerminating="false" name="HeartBeat">
-      <wsdl:output wsaw:Action="http://tempuri.org/IMonitoringListener/HeartBeat" message="tns:IMonitoringListener_HeartBeat_OutputCallbackMessage" />
-      <wsdl:input wsaw:Action="http://tempuri.org/IMonitoringListener/HeartBeatResponse" message="tns:IMonitoringListener_HeartBeat_InputCallbackMessage" />
+    <wsdl:operation msc:isInitiating="true" msc:isTerminating="false" name="BeginHeartBeat">
+      <wsdl:output wsaw:Action="http://tempuri.org/IMonitoringListener/BeginHeartBeat" message="tns:IMonitoringListener_BeginHeartBeat_OutputCallbackMessage" />
     </wsdl:operation>
   </wsdl:portType>
   <wsdl:binding name="NetTcpBinding_IMonitoringListener" type="tns:IMonitoringListener">
@@ -103,11 +99,8 @@
         <soap12:body use="literal" />
       </wsdl:output>
     </wsdl:operation>
-    <wsdl:operation name="HeartBeat">
-      <soap12:operation soapAction="http://tempuri.org/IMonitoringListener/HeartBeat" style="document" />
-      <wsdl:input>
-        <soap12:body use="literal" />
-      </wsdl:input>
+    <wsdl:operation name="BeginHeartBeat">
+      <soap12:operation soapAction="http://tempuri.org/IMonitoringListener/BeginHeartBeat" style="document" />
       <wsdl:output>
         <soap12:body use="literal" />
       </wsdl:output>
