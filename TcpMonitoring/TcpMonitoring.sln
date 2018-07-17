@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TcpMonitor", "TcpMonitor\Tc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TcpMonitorPublisher", "TcpMonitorPublisher\TcpMonitorPublisher.csproj", "{9049E96B-64F5-4F4C-B20A-8D2EE47B980C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Monitor", "Monitor\Monitor.csproj", "{3862ED2E-164F-4AE9-9539-26E128972472}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{9049E96B-64F5-4F4C-B20A-8D2EE47B980C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9049E96B-64F5-4F4C-B20A-8D2EE47B980C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9049E96B-64F5-4F4C-B20A-8D2EE47B980C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3862ED2E-164F-4AE9-9539-26E128972472}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3862ED2E-164F-4AE9-9539-26E128972472}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3862ED2E-164F-4AE9-9539-26E128972472}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3862ED2E-164F-4AE9-9539-26E128972472}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

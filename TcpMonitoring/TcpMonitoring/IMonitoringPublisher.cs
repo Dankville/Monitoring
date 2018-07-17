@@ -18,8 +18,6 @@ namespace TcpMonitoring
         void SendErrorMessage(IMessage errorMessage);
         void SendObject(IMessage obj);
 
-        void SendInterface<T>();
-
         void ReceiveCallback(IAsyncResult result);
         void Close();
     }

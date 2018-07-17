@@ -12,33 +12,33 @@ namespace TcpMonitor
     {
         static void Main(string[] args)
         {
-            string localIp = "127.0.0.1";
-            int port = 9000;
+            //Ip localIp = "127.0.0.1";
+            //int port = 9000;
 
-            TcpPublisherClient client = TcpPublisherClient.Instance();
+            //TcpPublisherClient client = TcpPublisherClient.Instance();
 
-            while (true)
-            {
-                Thread.Sleep(100);
-                if (!client.IsConnected)
-                {
-                    Console.WriteLine("Press [enter] to connect.");
-                    ConsoleKey key = Console.ReadKey().Key;
-                    if (key == ConsoleKey.Enter)
-                    {
-                        client.BeginConnect(localIp, port);
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Press [escape] to disconnect.");
-                    ConsoleKey key = Console.ReadKey().Key;
-                    if (key == ConsoleKey.Escape)
-                    {
-                        client.Unsubscribe();
-                    }
-                }               
-            }
+            //while (true)
+            //{
+            //    Thread.Sleep(100);
+            //    if (!client.IsConnected)
+            //    {
+            //        Console.WriteLine("Press [enter] to connect.");
+            //        ConsoleKey key = Console.ReadKey().Key;
+            //        if (key == ConsoleKey.Enter)
+            //        {
+            //            client.BeginConnect(localIp, port);
+            //        }
+            //    }
+            //    else
+            //    {
+            //        Console.WriteLine("Press [escape] to disconnect.");
+            //        ConsoleKey key = Console.ReadKey().Key;
+            //        if (key == ConsoleKey.Escape)
+            //        {
+            //            client.Unsubscribe();
+            //        }
+            //    }               
+            //}
         }
     }
 }
