@@ -33,11 +33,13 @@ namespace TcpMonitor
         private ManualResetEvent _SendDone = new ManualResetEvent(false);
         private ManualResetEvent _ReceiveDone = new ManualResetEvent(false);
 
-        private Task _HeartBeatChecker;
-        private Task _ReceiveLoopTask;
+        private Thread _HeartBeatChecker;
+        private Thread _ReceiveLoopTask;
         private CancellationToken _cancelToken = new CancellationToken();
 
+
         public int _MissedHeartBeats = 0;
+        public bool IsConnected = false;
 
         private static TcpPublisherClient _Instance = null;
 
@@ -55,11 +57,11 @@ namespace TcpMonitor
         private TcpPublisherClient()
         {
             Console.WriteLine("Publisher Client Started");
-            _publisherTcpClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
         }
 
         public void BeginConnect(string ipAddress, int port)
         {
+            _publisherTcpClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
             _publisherTcpClient.BeginConnect(ipAddress, port, new AsyncCallback(ConnectCallback), null);
             _ConnectDone.WaitOne();
         }
@@ -69,13 +71,16 @@ namespace TcpMonitor
             _publisherTcpClient.EndConnect(result);
             _ConnectDone.Set();
 
-            Console.WriteLine("Connected, press [enter] to subscribe.");
-        }
-
-        public void Subscribe()
-        {
-            _cancelToken = new CancellationToken(false);
-            Send(new SubscribeMessageObject() { Data = "Subscribe" });
+            if (result.IsCompleted)
+            {
+                IsConnected = true;
+                Console.WriteLine("Connected");
+                _cancelToken = new CancellationToken(false);
+                _ReceiveLoopTask = NewReceiveLoop();
+                _ReceiveLoopTask.Start();
+                _HeartBeatChecker = HeartbeatChecker();
+                _HeartBeatChecker.Start();
+            }
         }
 
         public void Unsubscribe()
@@ -92,41 +97,17 @@ namespace TcpMonitor
 
                 switch (message)
                 {
-                    case SubscribeMessageObject S:
-                        _publisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(SubscribeCallback), _publisherTcpClient);
-                        break;
                     case UnsubscribeMessageObject U:
                         _publisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(UnSubscribeCallback), _publisherTcpClient);
                         break;
+                    default:
+                        break;
                 }
-                
+
             }
             catch (Exception ex)
             {
 
-            }
-        }
-
-        private void SubscribeCallback(IAsyncResult result)
-        {
-            try
-            {
-                Socket client = (Socket)result.AsyncState;
-
-                int bytesSent = client.EndSend(result);
-
-                if (result.IsCompleted)
-                {
-                    _cancelToken = new CancellationToken(false);
-                    _ReceiveLoopTask = NewReceiveLoop();
-                    _ReceiveLoopTask.Start();
-                    _HeartBeatChecker = HeartbeatChecker();
-                    _HeartBeatChecker.Start();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
             }
         }
 
@@ -140,9 +121,12 @@ namespace TcpMonitor
 
                 if (result.IsCompleted)
                 {
+                    _publisherTcpClient = null;
+                    IsConnected = false;
                     _cancelToken = new CancellationToken(true);
-                    _ReceiveLoopTask.Dispose();
-                    _HeartBeatChecker.Dispose();
+                    
+                    _ReceiveLoopTask.Abort();
+                    _HeartBeatChecker.Abort();
                 }
             }
             catch (Exception ex)
@@ -150,7 +134,6 @@ namespace TcpMonitor
                 Console.WriteLine(ex.Message);
             }
         }
-
 
         private void Receive()
         {
@@ -237,57 +220,35 @@ namespace TcpMonitor
             Console.WriteLine(error.Data);
         }
 
-
-        // Opdracht verkeerd begrepen.
-        private void HandleInterfaceMessage(Dictionary<string, string> interfaceDictionary)
+        private Thread HeartbeatChecker()
         {
-            List<string> methodStrings = JsonConvert.DeserializeObject<List<string>>(interfaceDictionary["InterfaceMethods"]);
-            List<string> propertieStrings = JsonConvert.DeserializeObject<List<string>>(interfaceDictionary["InterfaceProperties"]);
-
-            InterfaceCreator interfaceCreator = new InterfaceCreator(interfaceDictionary["InterfaceName"], methodStrings, propertieStrings);
-            interfaceCreator.CreateInterfaceAssembly();
-        }
-
-        private Task HeartbeatChecker()
-        {
-            Task task = new Task(() => {
+            return new Thread(() => {
                 while (true)
                 {
                     try
                     {
                         Thread.Sleep(1000);
 
-                        if (_cancelToken.IsCancellationRequested)
-                        {
-                            _cancelToken.ThrowIfCancellationRequested();
-                        }
-
                         if (_MissedHeartBeats >= 5)
                         {
-                            Close();
                             Console.WriteLine("5 heartbeats missed, closed connection");
+                            Close();
                             break;
                         }
                         _MissedHeartBeats++;
                     }
-                    catch (TaskCanceledException ex)
-                    {
-                        
-                        _HeartBeatChecker.Dispose();
-                    }
                     catch (Exception ex)
                     {
-                        Console.WriteLine(ex.Message);
+                        
                     }
                 }
-            }, _cancelToken);
-            return task;
+            });
         }
 
 
-        private Task NewReceiveLoop()
+        private Thread NewReceiveLoop()
         {
-            Task receiveLoopTask = new Task(() =>
+            return new Thread(() =>
             {
                 try
                 {
@@ -297,17 +258,28 @@ namespace TcpMonitor
                     }
                     Receive();
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     Console.WriteLine(ex.Message);
                 }
-            }, _cancelToken);
-            return receiveLoopTask;
+            });
         }
 
         public void Close()
         {
             _publisherTcpClient.Close();
+        }
+
+
+
+        // Opdracht verkeerd begrepen.
+        private void HandleInterfaceMessage(Dictionary<string, string> interfaceDictionary)
+        {
+            List<string> methodStrings = JsonConvert.DeserializeObject<List<string>>(interfaceDictionary["InterfaceMethods"]);
+            List<string> propertieStrings = JsonConvert.DeserializeObject<List<string>>(interfaceDictionary["InterfaceProperties"]);
+
+            InterfaceCreator interfaceCreator = new InterfaceCreator(interfaceDictionary["InterfaceName"], methodStrings, propertieStrings);
+            interfaceCreator.CreateInterfaceAssembly();
         }
     }
 }

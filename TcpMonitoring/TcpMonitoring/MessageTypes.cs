@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace TcpMonitoring
 {
-    // In XIMEx implementation, i should make a interface per messagetype.
+    // Niet nodig.
     public enum MessageType
     {
         // Management Messages

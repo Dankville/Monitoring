@@ -32,8 +32,8 @@ namespace TcpMonitorPublisher
         private static readonly IMonitoringPublisher _Instance = new TcpPublisherServer();
         
         private TcpListener _MonitorServer;
-        private Socket _workSocket = null;
-        private Task _heartbeatTask;
+        private Socket _clientSocket = null;
+        private Thread _heartbeatTask;
         
         
         private TcpPublisherServer() { }
@@ -64,34 +64,30 @@ namespace TcpMonitorPublisher
 
         public void OnClientConnected(IAsyncResult result)
         {
-            Socket handler = _MonitorServer.EndAcceptSocket(result);
-
-            StateObject state = new StateObject();
-            state.workSocket = handler;
-            _workSocket = handler;
-
+            _clientSocket = _MonitorServer.EndAcceptSocket(result);
+            
             _heartbeatTask = NewHeartBeatTask();
             _heartbeatTask.Start();
 
+            WaitForClients();
             Receive();
         }
 
         private void SendAsync(string data)
         {
-            if (_workSocket != null)
+            if (_clientSocket != null)
             {
                 byte[] byteArr = Encoding.ASCII.GetBytes(data);
-                _workSocket.BeginSend(byteArr, 0, byteArr.Length, 0, new AsyncCallback(SendCallback), _workSocket);
+                _clientSocket.BeginSend(byteArr, 0, byteArr.Length, 0, new AsyncCallback(SendCallback), _clientSocket);
             }
         }
-
-
+        
         private void Send(string data)
         {
-            if (_workSocket != null)
+            if (_clientSocket != null)
             {
                 byte[] dataBytes = Encoding.ASCII.GetBytes(data);
-                _workSocket.Send(dataBytes);
+                _clientSocket.Send(dataBytes);
             }
         }
 
@@ -113,9 +109,9 @@ namespace TcpMonitorPublisher
             try
             {
                 StateObject state = new StateObject();
-                state.workSocket = _workSocket;
+                state.workSocket = _clientSocket;
 
-                _workSocket.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
+                _clientSocket.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
             }
             catch (Exception ex)
             {
@@ -129,12 +125,15 @@ namespace TcpMonitorPublisher
 
             StateObject state = (StateObject)result.AsyncState;
             Socket handler = state.workSocket;
-            int bytesRead = handler.EndReceive(result);
-            Receive();
+            if (handler.Connected)
+            {
+                int bytesRead = handler.EndReceive(result);
+                Receive();
 
-            state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
-            string msg = state.sb.ToString();
-            HandleMessage(msg);
+                state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
+                string msg = state.sb.ToString();
+                HandleMessage(msg);
+            }
         }
 
         private void HandleMessage(string jsonMsg)
@@ -145,9 +144,6 @@ namespace TcpMonitorPublisher
 
                 switch (message)
                 {
-                    case SubscribeMessageObject S:
-                        HandleSubscriptionMessage(S);
-                        break;
                     case UnsubscribeMessageObject U:
                         HandleUnsubscribeMessage(U);
                         break;
@@ -161,25 +157,20 @@ namespace TcpMonitorPublisher
             }
         }
 
-        private void HandleSubscriptionMessage(IMessage msg)
-        {
-            Console.WriteLine("\nsubscribed");
-        }
-
         private void HandleUnsubscribeMessage(IMessage msg)
         {
             Console.WriteLine("\nunsubscribed");
             Close();
         }
 
-        private Task NewHeartBeatTask()
+        private Thread NewHeartBeatTask()
         {
-            return new Task(async () =>
+            return new Thread(() =>
             {
                 while (true)
                 {
                     SendHeartBeat();
-                    await Task.Delay(1000);
+                    Thread.Sleep(1000);
                 }
             });
         }
@@ -223,6 +214,20 @@ namespace TcpMonitorPublisher
             Send(SerializeHeartbeat());
         }
 
+        private string SerializeMonitorMessage(IMessage message)
+        {
+            return JsonConvert.SerializeObject(message, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
+        }
+
+        public void Close()
+        {
+            _heartbeatTask.Abort();
+            _clientSocket.Close();
+            _clientSocket = null;
+        }
+
+
+        // deprecated??
         private string SerializeInterface<T>()
         {
             try
@@ -278,18 +283,5 @@ namespace TcpMonitorPublisher
                 throw new Exception();
             }
         }
-
-        private string SerializeMonitorMessage(IMessage message)
-        {
-            return JsonConvert.SerializeObject(message, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
-        }
-
-        public void Close()
-        {
-            _workSocket = null;
-            _heartbeatTask.Dispose();
-            _workSocket.Close();
-        }
-
     }
 }
