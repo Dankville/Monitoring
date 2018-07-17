@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+
 using TcpMonitoring;
+using TcpMonitoring.MessagingObjects;
 
 namespace TcpMonitorPublisher
 {
@@ -19,12 +21,12 @@ namespace TcpMonitorPublisher
             
             while (true)
             {
-                //ConsoleKeyInfo keystroke = Console.ReadKey();
-                //host.PublisherServer.SendMessage(keystroke.Key.ToString());
+                string keyStr = Console.ReadKey().Key.ToString();
 
-                Console.WriteLine("press [enter] to send interface");
-                Console.ReadLine();
-                host.PublisherServer.SendInterface<IMonitoringPublisherClient>();
+                IMessage message = new MessageObject();
+                message.Data = keyStr;
+
+                host.PublisherServer.SendObject(message);
             }
         }
     }

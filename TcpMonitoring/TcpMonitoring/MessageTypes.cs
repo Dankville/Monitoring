@@ -6,11 +6,13 @@ using System.Threading.Tasks;
 
 namespace TcpMonitoring
 {
+    // In XIMEx implementation, i should make a interface per messagetype.
     public enum MessageType
     {
         // Management Messages
         HeartBeat = 0,
         Interface = 1,
+        Object = 2,
 
         // Monitoring Messages
         MonitorMessage = 10,
@@ -18,7 +20,8 @@ namespace TcpMonitoring
 
         // Message Data
         MessageData = 100,
-        InterfaceMethods = 101,
+        InterfaceName,
+        InterfaceMethods,
         InterfaceProperties
     }
 }

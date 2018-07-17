@@ -12,5 +12,6 @@ namespace TcpMonitoring
 
         void TestMethod();
         void TestMethodTwo(int TestPara);
+        string TestMethodThree(int testParaOne, string testParaTwo);
     }
 }

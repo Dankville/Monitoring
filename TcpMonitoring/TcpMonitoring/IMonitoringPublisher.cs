@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TcpMonitoring;
+using TcpMonitoring.MessagingObjects;
 
 namespace TcpMonitoring
 {
@@ -12,11 +14,11 @@ namespace TcpMonitoring
         void WaitForClients();
         void OnClientConnected(IAsyncResult result);
 
-        void SendHeartBeat(string heartBeatData);
-        void SendMessage(string message);
-        void SendErrorMessage(string errorMessage);
-        void SendInterface<T>();
+        void SendHeartBeat();
+        void SendErrorMessage(IMessage errorMessage);
+        void SendObject(IMessage obj);
 
+        void SendInterface<T>();
 
         void ReceiveCallback(IAsyncResult result);
         void Close();

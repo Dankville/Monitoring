@@ -11,6 +11,7 @@ using System.Reflection;
 
 
 using TcpMonitoring;
+using TcpMonitoring.MessagingObjects;
 
 namespace TcpMonitorPublisher
 {
@@ -31,10 +32,10 @@ namespace TcpMonitorPublisher
         private static readonly IMonitoringPublisher _Instance = new TcpPublisherServer();
         
         private TcpListener _MonitorServer;
-        private Socket _WorkSocket;
-
-        private CancellationToken _CancelationToken;
-
+        private Socket _workSocket = null;
+        private Task _heartbeatTask;
+        
+        
         private TcpPublisherServer() { }
 
         public static IMonitoringPublisher Instance => _Instance;
@@ -67,35 +68,31 @@ namespace TcpMonitorPublisher
 
             StateObject state = new StateObject();
             state.workSocket = handler;
-            _WorkSocket = handler;
+            _workSocket = handler;
 
-            HeartBeatTask();
-        }
+            _heartbeatTask = NewHeartBeatTask();
+            _heartbeatTask.Start();
 
-        public void SendMessage(string message)
-        {
-            SendAsync(SerializeMonitorMessage(message));
-        }
-
-        public void SendErrorMessage(string errorMessage)
-        {
-            SendAsync(SerializeMonitorMessage(errorMessage));
-        }
-
-        public void SendInterface<T>()
-        {
-            SendAsync(SerializeInterface<T>());
-        }
-
-        public void SendHeartBeat(string heartBeatData)
-        {
-            Send(SerializeHeartbeat(heartBeatData));
+            Receive();
         }
 
         private void SendAsync(string data)
         {
-            byte[] byteArr = Encoding.ASCII.GetBytes(data);
-            _WorkSocket.BeginSend(byteArr, 0, byteArr.Length, 0, new AsyncCallback(SendCallback), _WorkSocket);
+            if (_workSocket != null)
+            {
+                byte[] byteArr = Encoding.ASCII.GetBytes(data);
+                _workSocket.BeginSend(byteArr, 0, byteArr.Length, 0, new AsyncCallback(SendCallback), _workSocket);
+            }
+        }
+
+
+        private void Send(string data)
+        {
+            if (_workSocket != null)
+            {
+                byte[] dataBytes = Encoding.ASCII.GetBytes(data);
+                _workSocket.Send(dataBytes);
+            }
         }
 
         private void SendCallback(IAsyncResult result)
@@ -111,10 +108,19 @@ namespace TcpMonitorPublisher
             }
         }
 
-        private void Send(string data)
+        private void Receive()
         {
-            byte[] dataBytes = Encoding.ASCII.GetBytes(data);
-            _WorkSocket.Send(dataBytes);
+            try
+            {
+                StateObject state = new StateObject();
+                state.workSocket = _workSocket;
+
+                _workSocket.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
+            }
+            catch (Exception ex)
+            {
+
+            }
         }
 
         public void ReceiveCallback(IAsyncResult result)
@@ -123,86 +129,166 @@ namespace TcpMonitorPublisher
 
             StateObject state = (StateObject)result.AsyncState;
             Socket handler = state.workSocket;
-
             int bytesRead = handler.EndReceive(result);
+            Receive();
 
-            if (bytesRead > 0)
+            state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
+            string msg = state.sb.ToString();
+            HandleMessage(msg);
+        }
+
+        private void HandleMessage(string jsonMsg)
+        {
+            try
             {
-                state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
+                IMessage message = JsonConvert.DeserializeObject<IMessage>(jsonMsg, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
 
-                content = state.sb.ToString();
-                Console.WriteLine(content);
+                switch (message)
+                {
+                    case SubscribeMessageObject S:
+                        HandleSubscriptionMessage(S);
+                        break;
+                    case UnsubscribeMessageObject U:
+                        HandleUnsubscribeMessage(U);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+
             }
         }
 
-        private void HeartBeatTask()
+        private void HandleSubscriptionMessage(IMessage msg)
         {
-            Task.Run(async () =>
+            Console.WriteLine("\nsubscribed");
+        }
+
+        private void HandleUnsubscribeMessage(IMessage msg)
+        {
+            Console.WriteLine("\nunsubscribed");
+            Close();
+        }
+
+        private Task NewHeartBeatTask()
+        {
+            return new Task(async () =>
             {
                 while (true)
                 {
-                    SendHeartBeat(JsonSerializer(MessageType.HeartBeat, "Heartbeat data"));
-                    await Task.Delay(5000);
+                    SendHeartBeat();
+                    await Task.Delay(1000);
                 }
-            }).Wait();
+            });
         }
 
-        private string JsonSerializer(MessageType messageType, string data)
+        private string SerializeObjectMessage(IMessage obj)
         {
-            switch (messageType)
+            return JsonConvert.SerializeObject(obj, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
+        }
+
+        private string SerializeHeartbeat()
+        {
+            try
             {
-                case (MessageType.HeartBeat):
-                    return SerializeHeartbeat(data);
-                case (MessageType.Interface):
-                    return SerializeInterface<IMonitoringPublisherClient>();
-                case (MessageType.MonitorMessage):
-                case (MessageType.ErrorMessage):
-                    return SerializeMonitorMessage(data);
-                default:
-                    return "";
+                HeartbeatObject heartbeat = new HeartbeatObject();
+                heartbeat.Data = "Heartbeat data";
+                return JsonConvert.SerializeObject(heartbeat, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
+            }
+            catch (Exception ex)
+            {
+                throw new Exception();
             }
         }
 
-        private string SerializeHeartbeat(string data)
+        public void SendErrorMessage(IMessage errorMessage)
         {
-            Dictionary<string, string> messageDict = new Dictionary<string, string>();
-            messageDict.Add(nameof(MessageType), nameof(MessageType.HeartBeat));
-            return JsonConvert.SerializeObject(messageDict);
+            SendAsync(SerializeMonitorMessage(errorMessage));
+        }
+
+        public void SendInterface<T>()
+        {
+            SendAsync(SerializeInterface<T>());
+        }
+
+        public void SendObject(IMessage message)
+        {
+            SendAsync(SerializeObjectMessage(message));
+        }
+
+        public void SendHeartBeat()
+        {
+            Send(SerializeHeartbeat());
         }
 
         private string SerializeInterface<T>()
         {
-            Dictionary<string, string> messageDict = new Dictionary<string, string>();
-            messageDict.Add(nameof(MessageType), nameof(MessageType.Interface));
+            try
+            {
+                if (!typeof(T).IsInterface)
+                    throw new ArgumentException($"Type {typeof(T).Name} must be an interface.");
 
+                Type iFaceType = (typeof(T));
 
-            List<string> interfaceProps = new List<string>();
-            List<string> interfaceMethods = new List<string>();
+                Dictionary<string, string> messageDict = new Dictionary<string, string>();
+                messageDict.Add(nameof(MessageType), nameof(MessageType.Interface));
+                messageDict.Add(nameof(MessageType.InterfaceName), iFaceType.Name.ToString());
 
-            Type myType = (typeof(T));
+                List<string> interfaceProps = new List<string>();
+                List<string> interfaceMethods = new List<string>();
 
-            foreach (var prop in myType.GetProperties())
-                interfaceProps.Add(prop.ToString());
-            foreach (var method in myType.GetMethods())
-                interfaceMethods.Add(method.ToString());
+                foreach (var prop in iFaceType.GetProperties())
+                    interfaceProps.Add(prop.ToString());
+                foreach (var method in iFaceType.GetMethods())
+                {
+                    ParameterInfo[] paraInfo = method.GetParameters();
 
-            messageDict.Add(nameof(MessageType.InterfaceProperties), JsonConvert.SerializeObject(interfaceProps));
-            messageDict.Add(nameof(MessageType.InterfaceMethods), JsonConvert.SerializeObject(interfaceMethods));
+                    if (paraInfo.Length > 0)
+                    {
+                        string methodString = method.ToString();
+                        string noParas = methodString.Split('(')[0];
+                        noParas += '(';
+                        int counter = 1;
+                        foreach (var p in paraInfo)
+                        {
+                            noParas += p.ToString();
 
-            return JsonConvert.SerializeObject(messageDict);
+                            if (counter != paraInfo.Length)
+                                noParas += ", ";
+                            counter++;
+                        }
+                        noParas += ')';
+                        interfaceMethods.Add(noParas);
+                    }
+                    else
+                    {
+                        interfaceMethods.Add(method.ToString());
+                    }
+                }
+
+                messageDict.Add(nameof(MessageType.InterfaceProperties), JsonConvert.SerializeObject(interfaceProps));
+                messageDict.Add(nameof(MessageType.InterfaceMethods), JsonConvert.SerializeObject(interfaceMethods));
+
+                return JsonConvert.SerializeObject(messageDict);
+            }
+            catch (Exception AEx)
+            {
+                throw new Exception();
+            }
         }
 
-        private string SerializeMonitorMessage(string data)
+        private string SerializeMonitorMessage(IMessage message)
         {
-            Dictionary<string, string> monitorMessageDict = new Dictionary<string, string>();
-            monitorMessageDict.Add(nameof(MessageType), nameof(MessageType.MonitorMessage));
-            monitorMessageDict.Add(nameof(MessageType.MessageData), data);
-            return JsonConvert.SerializeObject(monitorMessageDict);
+            return JsonConvert.SerializeObject(message, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
         }
 
         public void Close()
         {
-            throw new NotImplementedException();
+            _workSocket = null;
+            _heartbeatTask.Dispose();
+            _workSocket.Close();
         }
 
     }

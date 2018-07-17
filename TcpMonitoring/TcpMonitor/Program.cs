@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TcpMonitoring.MessagingObjects;
 
 namespace TcpMonitor
 {
@@ -17,9 +18,18 @@ namespace TcpMonitor
             TcpPublisherClient client = TcpPublisherClient.Instance();
             client.BeginConnect(localIp, 9000);
 
-
-
             Console.ReadLine();
+            client.Subscribe();
+            
+            while (true)
+            {
+                Console.WriteLine("Press [esc] to unsubscribe and [enter] to subscribe.");
+                string keyStr = Console.ReadKey().Key.ToString();
+                if (keyStr == ConsoleKey.Escape.ToString())
+                    client.Unsubscribe();
+                else if (keyStr == ConsoleKey.Enter.ToString())
+                    client.Subscribe();
+            }
         }
     }
 }

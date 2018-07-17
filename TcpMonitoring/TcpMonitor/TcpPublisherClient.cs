@@ -7,6 +7,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+
+using TcpMonitoring;
+using TcpMonitoring.MessagingObjects;
 
 namespace TcpMonitor
 {
@@ -29,10 +33,15 @@ namespace TcpMonitor
         private ManualResetEvent _SendDone = new ManualResetEvent(false);
         private ManualResetEvent _ReceiveDone = new ManualResetEvent(false);
 
+        private Task _HeartBeatChecker;
+        private Task _ReceiveLoopTask;
+        private CancellationToken _cancelToken = new CancellationToken();
+
+        public int _MissedHeartBeats = 0;
 
         private static TcpPublisherClient _Instance = null;
 
-        public Socket PublisherTcpClient;
+        public Socket _publisherTcpClient;
 
         public static TcpPublisherClient Instance()
         {
@@ -45,37 +54,52 @@ namespace TcpMonitor
 
         private TcpPublisherClient()
         {
-            try
-            {
-                Console.WriteLine("Publisher Client Started");
-                PublisherTcpClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            }
-            catch (Exception ex)
-            {
-
-            }
+            Console.WriteLine("Publisher Client Started");
+            _publisherTcpClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
         }
 
         public void BeginConnect(string ipAddress, int port)
         {
-            PublisherTcpClient.BeginConnect(ipAddress, port, new AsyncCallback(ConnectCallback), null);
+            _publisherTcpClient.BeginConnect(ipAddress, port, new AsyncCallback(ConnectCallback), null);
             _ConnectDone.WaitOne();
         }
 
-        public void ConnectCallback(IAsyncResult result)
+        private void ConnectCallback(IAsyncResult result)
         {
-            PublisherTcpClient.EndConnect(result);
+            _publisherTcpClient.EndConnect(result);
             _ConnectDone.Set();
-            Receive();
+
+            Console.WriteLine("Connected, press [enter] to subscribe.");
         }
 
-        public void Send(string message)
+        public void Subscribe()
+        {
+            _cancelToken = new CancellationToken(false);
+            Send(new SubscribeMessageObject() { Data = "Subscribe" });
+        }
+
+        public void Unsubscribe()
+        {
+            Send(new UnsubscribeMessageObject() { Data = "Unsubscribe" });
+        }
+
+        public void Send(IMessage message)
         {
             try
             {
-                byte[] byteData = Encoding.ASCII.GetBytes(message);
+                string msgJson = JsonConvert.SerializeObject(message, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All });
+                byte[] byteData = Encoding.ASCII.GetBytes(msgJson);
 
-                PublisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(SendCallback), PublisherTcpClient);
+                switch (message)
+                {
+                    case SubscribeMessageObject S:
+                        _publisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(SubscribeCallback), _publisherTcpClient);
+                        break;
+                    case UnsubscribeMessageObject U:
+                        _publisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(UnSubscribeCallback), _publisherTcpClient);
+                        break;
+                }
+                
             }
             catch (Exception ex)
             {
@@ -83,13 +107,22 @@ namespace TcpMonitor
             }
         }
 
-        private void SendCallback(IAsyncResult result)
+        private void SubscribeCallback(IAsyncResult result)
         {
             try
             {
                 Socket client = (Socket)result.AsyncState;
 
                 int bytesSent = client.EndSend(result);
+
+                if (result.IsCompleted)
+                {
+                    _cancelToken = new CancellationToken(false);
+                    _ReceiveLoopTask = NewReceiveLoop();
+                    _ReceiveLoopTask.Start();
+                    _HeartBeatChecker = HeartbeatChecker();
+                    _HeartBeatChecker.Start();
+                }
             }
             catch (Exception ex)
             {
@@ -97,14 +130,36 @@ namespace TcpMonitor
             }
         }
 
-        public void Receive()
+        private void UnSubscribeCallback(IAsyncResult result)
+        {
+            try
+            {
+                Socket client = (Socket)result.AsyncState;
+
+                int bytesSent = client.EndSend(result);
+
+                if (result.IsCompleted)
+                {
+                    _cancelToken = new CancellationToken(true);
+                    _ReceiveLoopTask.Dispose();
+                    _HeartBeatChecker.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+
+        private void Receive()
         {
             try
             {
                 StateObject state = new StateObject();
-                state.workSocket = PublisherTcpClient;
+                state.workSocket = _publisherTcpClient;
 
-                PublisherTcpClient.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
+                _publisherTcpClient.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
             }
             catch (SocketException ex)
             {
@@ -136,21 +191,18 @@ namespace TcpMonitor
         {
             try
             {
-                Dictionary<string, string> messageDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(jsonMessage);
-
-                switch (messageDict["MessageType"])
+                IMessage message = JsonConvert.DeserializeObject<IMessage>(jsonMessage, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All});
+                
+                switch (message)
                 {
-                    case "HeartBeat":
-                        Console.WriteLine("Hearbeat received");
+                    case HeartbeatObject H:
+                        HandleHeartBeatMessage(H);
                         break;
-                    case "MonitorMessage":
-                        HandleMonitorMessage(messageDict["MessageData"]);
+                    case MessageObject M:
+                        HandleObjectMessage(M);
                         break;
-                    case "ErrorMessage":
-                        HandleErrorMessage(messageDict["MessageData"]);
-                        break;
-                    case "Interface":
-                        HandleInterfaceMessage(messageDict);
+                    case ErrorMessageObject E:
+                        HandleErrorMessage(E);
                         break;
                     default:
                         break;
@@ -162,27 +214,100 @@ namespace TcpMonitor
             }
         }
 
-        private void HandleErrorMessage(string data)
+        private void HandleHeartBeatMessage(HeartbeatObject message)
         {
-            Console.WriteLine(data);
+            // do something idk what yet, depends on XIMEx.
+            _MissedHeartBeats = 0;
         }
 
-        private void HandleMonitorMessage(string data)
+        private void HandleObjectMessage(MessageObject message)
         {
-            Console.WriteLine(data);
+            try
+            {
+                Console.WriteLine(message.Data);
+            }
+            catch (Exception)
+            {
+
+            }
         }
 
+        private void HandleErrorMessage(ErrorMessageObject error)
+        {
+            Console.WriteLine(error.Data);
+        }
+
+
+        // Opdracht verkeerd begrepen.
         private void HandleInterfaceMessage(Dictionary<string, string> interfaceDictionary)
         {
             List<string> methodStrings = JsonConvert.DeserializeObject<List<string>>(interfaceDictionary["InterfaceMethods"]);
             List<string> propertieStrings = JsonConvert.DeserializeObject<List<string>>(interfaceDictionary["InterfaceProperties"]);
 
+            InterfaceCreator interfaceCreator = new InterfaceCreator(interfaceDictionary["InterfaceName"], methodStrings, propertieStrings);
+            interfaceCreator.CreateInterfaceAssembly();
+        }
 
+        private Task HeartbeatChecker()
+        {
+            Task task = new Task(() => {
+                while (true)
+                {
+                    try
+                    {
+                        Thread.Sleep(1000);
+
+                        if (_cancelToken.IsCancellationRequested)
+                        {
+                            _cancelToken.ThrowIfCancellationRequested();
+                        }
+
+                        if (_MissedHeartBeats >= 5)
+                        {
+                            Close();
+                            Console.WriteLine("5 heartbeats missed, closed connection");
+                            break;
+                        }
+                        _MissedHeartBeats++;
+                    }
+                    catch (TaskCanceledException ex)
+                    {
+                        
+                        _HeartBeatChecker.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
+                }
+            }, _cancelToken);
+            return task;
+        }
+
+
+        private Task NewReceiveLoop()
+        {
+            Task receiveLoopTask = new Task(() =>
+            {
+                try
+                {
+                    if (_cancelToken.IsCancellationRequested)
+                    {
+                        _cancelToken.ThrowIfCancellationRequested();
+                    }
+                    Receive();
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }, _cancelToken);
+            return receiveLoopTask;
         }
 
         public void Close()
         {
-            PublisherTcpClient.Close();
+            _publisherTcpClient.Close();
         }
     }
 }
