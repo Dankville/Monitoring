@@ -33,11 +33,15 @@
 			this.txtBoxIpAddress = new System.Windows.Forms.TextBox();
 			this.lblPort = new System.Windows.Forms.Label();
 			this.txtBoxPort = new System.Windows.Forms.TextBox();
+			this.listViewWaiting = new System.Windows.Forms.ListView();
+			this.lblWaiting = new System.Windows.Forms.Label();
+			this.ListViewIDColumnHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+			this.ListViewItemColumnHeader = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
 			this.SuspendLayout();
 			// 
 			// btnConnect
 			// 
-			this.btnConnect.Location = new System.Drawing.Point(12, 51);
+			this.btnConnect.Location = new System.Drawing.Point(16, 42);
 			this.btnConnect.Name = "btnConnect";
 			this.btnConnect.Size = new System.Drawing.Size(113, 41);
 			this.btnConnect.TabIndex = 0;
@@ -79,11 +83,42 @@
 			this.txtBoxPort.TabIndex = 4;
 			this.txtBoxPort.Text = "9000";
 			// 
+			// listViewWaiting
+			// 
+			this.listViewWaiting.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+			this.ListViewIDColumnHeader,
+			this.ListViewItemColumnHeader});
+			this.listViewWaiting.Location = new System.Drawing.Point(16, 131);
+			this.listViewWaiting.Name = "listViewWaiting";
+			this.listViewWaiting.Size = new System.Drawing.Size(288, 577);
+			this.listViewWaiting.TabIndex = 5;
+			this.listViewWaiting.UseCompatibleStateImageBehavior = false;
+			// 
+			// lblWaiting
+			// 
+			this.lblWaiting.AutoSize = true;
+			this.lblWaiting.Location = new System.Drawing.Point(16, 105);
+			this.lblWaiting.Name = "lblWaiting";
+			this.lblWaiting.Size = new System.Drawing.Size(62, 20);
+			this.lblWaiting.TabIndex = 6;
+			this.lblWaiting.Text = "Waiting";
+			// 
+			// ListViewIDColumnHeader
+			// 
+			this.ListViewIDColumnHeader.Text = "ID";
+			this.ListViewIDColumnHeader.Width = 10;
+			// 
+			// ListViewItemColumnHeader
+			// 
+			this.ListViewItemColumnHeader.Width = 50;
+			// 
 			// MonitorForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(831, 720);
+			this.Controls.Add(this.lblWaiting);
+			this.Controls.Add(this.listViewWaiting);
 			this.Controls.Add(this.txtBoxPort);
 			this.Controls.Add(this.lblPort);
 			this.Controls.Add(this.txtBoxIpAddress);
@@ -103,6 +138,10 @@
 		private System.Windows.Forms.TextBox txtBoxIpAddress;
 		private System.Windows.Forms.Label lblPort;
 		private System.Windows.Forms.TextBox txtBoxPort;
+		private System.Windows.Forms.ListView listViewWaiting;
+		private System.Windows.Forms.Label lblWaiting;
+		private System.Windows.Forms.ColumnHeader ListViewIDColumnHeader;
+		private System.Windows.Forms.ColumnHeader ListViewItemColumnHeader;
 	}
 }
 

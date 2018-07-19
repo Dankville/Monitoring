@@ -43,15 +43,16 @@
   <ItemGroup>
     <Compile Include="MessagingObjects\ErrorMessageObject.cs" />
     <Compile Include="MessagingObjects\HeartbeatObject.cs" />
-    <Compile Include="IMonitoringPublisherClient.cs" />
     <Compile Include="IMonitoringPublisher.cs" />
     <Compile Include="MessagingObjects\IMessage.cs" />
     <Compile Include="MessagingObjects\InitalizeMessage.cs" />
     <Compile Include="MessagingObjects\MessageObject.cs" />
-    <Compile Include="MessageTypes.cs" />
+    <Compile Include="MessagingObjects\QueueItemsMessage.cs" />
     <Compile Include="MessagingObjects\SubscribeMessageObject.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="MessagingObjects\UnsubscribeMessageObject.cs" />
+    <Compile Include="QueueingItems\QueueItem.cs" />
+    <Compile Include="QueueingItems\StateType.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

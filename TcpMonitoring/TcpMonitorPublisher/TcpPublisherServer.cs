@@ -12,6 +12,7 @@ using System.Reflection;
 
 using TcpMonitoring;
 using TcpMonitoring.MessagingObjects;
+using TcpMonitoring.QueueingItems;
 
 namespace TcpMonitorPublisher
 {
@@ -35,6 +36,7 @@ namespace TcpMonitorPublisher
 		private Socket _clientSocket = null;
 		private Thread _heartbeatTask;
 		
+		private MockQueueItems _mockQueueItems = new MockQueueItems();
 		
 		private TcpPublisherServer() { }
 
@@ -56,6 +58,8 @@ namespace TcpMonitorPublisher
 			}
 		}
 
+		// Connection calls;
+
 		public void WaitForClients()
 		{
 			Socket monitorClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
@@ -66,16 +70,19 @@ namespace TcpMonitorPublisher
 		{
 			Console.WriteLine("Client Connected.");
 			_clientSocket = _MonitorServer.EndAcceptSocket(result);
-			
-			_heartbeatTask = NewHeartBeatTask();
-			_heartbeatTask.Start();
+
+			//_heartbeatTask = NewHeartBeatTask();
+			//_heartbeatTask.Start();
 
 			WaitForClients();
 			Receive();
 		}
 
+		// Sending calls
+
 		private void SendAsync(string data)
 		{
+			data += "<EOF>";
 			if (_clientSocket != null)
 			{
 				byte[] byteArr = Encoding.ASCII.GetBytes(data);
@@ -105,6 +112,8 @@ namespace TcpMonitorPublisher
 			}
 		}
 
+		// Receiving calls.
+
 		private void Receive()
 		{
 			try
@@ -122,20 +131,21 @@ namespace TcpMonitorPublisher
 
 		public void ReceiveCallback(IAsyncResult result)
 		{
-			string content = string.Empty;
-
 			StateObject state = (StateObject)result.AsyncState;
 			Socket handler = state.workSocket;
+
 			if (handler.Connected)
 			{
 				int bytesRead = handler.EndReceive(result);
-				Receive();
-
+				
 				state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
 				string msg = state.sb.ToString();
 				HandleMessage(msg);
+				Receive();
 			}
 		}
+
+		// Received Message Handling
 
 		private void HandleMessage(string jsonMsg)
 		{
@@ -148,6 +158,9 @@ namespace TcpMonitorPublisher
 					case UnsubscribeMessageObject U:
 						HandleUnsubscribeMessage(U);
 						break;
+					case InitalizeMessage I:
+						HandleInitializeMessage(I);
+						break;
 					default:
 						break;
 				}
@@ -158,11 +171,24 @@ namespace TcpMonitorPublisher
 			}
 		}
 
+		private void HandleInitializeMessage(InitalizeMessage i)
+		{
+			QueueItemsMessage queueItems = new QueueItemsMessage();
+			queueItems.Data = "All current queue items";
+			queueItems.QueueItems = _mockQueueItems.mockItems;
+
+			string queueItemsJson = SerializeObjectMessage(queueItems);
+
+			SendAsync(queueItemsJson);
+		}
+
 		private void HandleUnsubscribeMessage(IMessage msg)
 		{
 			Console.WriteLine("\nunsubscribed");
 			Close();
 		}
+
+		// Helper methods
 
 		private Thread NewHeartBeatTask()
 		{
@@ -207,6 +233,7 @@ namespace TcpMonitorPublisher
 
 		public void SendHeartBeat()
 		{
+			Console.WriteLine("Heartbeat sent");
 			Send(SerializeHeartbeat());
 		}
 

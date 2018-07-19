@@ -7,12 +7,13 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 
-using TcpMonitoring;
+
 using TcpMonitoring.MessagingObjects;
+using TcpMonitoring.QueueingItems;
 
-namespace TcpMonitor
+
+namespace Monitor
 {
 	public class StateObject
 	{
@@ -28,22 +29,26 @@ namespace TcpMonitor
 
 	public class TcpPublisherClient
 	{
+		// Maintaning connection
 		private ManualResetEvent _ConnectDone = new ManualResetEvent(false);
 		private ManualResetEvent _SendDone = new ManualResetEvent(false);
 		private ManualResetEvent _ReceiveDone = new ManualResetEvent(false);
-		
+
 		private Thread _heartBeatChecker;
 		private Thread _receiveLoopTask;
 
-		
-
+		public Socket _publisherTcpClient;
 		public int _MissedHeartBeats = 0;
 		public bool IsConnected = false;
 
+
+		// Items in the actual queue
+		public QueueItemsHandler queueItemsHandler;
+
+		private string _lastReceivedMessage;
+
+		// Singleton
 		private static TcpPublisherClient _Instance = null;
-
-		public Socket _publisherTcpClient;
-
 		public static TcpPublisherClient Instance()
 		{
 			if (_Instance == null)
@@ -55,7 +60,7 @@ namespace TcpMonitor
 
 		private TcpPublisherClient()
 		{
-			Console.WriteLine("Publisher Client Started");
+			queueItemsHandler = new QueueItemsHandler();
 		}
 
 		public void BeginConnect(IPAddress ipAddress, int port)
@@ -78,6 +83,8 @@ namespace TcpMonitor
 				_receiveLoopTask.Start();
 				_heartBeatChecker = HeartbeatChecker();
 				_heartBeatChecker.Start();
+
+				ConnectionDoneEvent();
 			}
 		}
 
@@ -101,6 +108,9 @@ namespace TcpMonitor
 					case UnsubscribeMessageObject U:
 						_publisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(UnSubscribeCallback), _publisherTcpClient);
 						break;
+					case InitalizeMessage I:
+						_publisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(InitializeCallback), _publisherTcpClient);
+						break;
 					default:
 						break;
 				}
@@ -117,10 +127,23 @@ namespace TcpMonitor
 		{
 			if (result.IsCompleted)
 			{
-				IsConnected = false;                    
+				IsConnected = false;
 				_receiveLoopTask.Abort();
 				_heartBeatChecker.Abort();
 				_publisherTcpClient = null;
+			}
+		}
+
+		private void InitializeCallback(IAsyncResult result)
+		{
+			try
+			{
+				Socket client = (Socket)result.AsyncState;
+				int bytesRead = client.EndSend(result);
+			}
+			catch (Exception ex)
+			{
+
 			}
 		}
 
@@ -147,12 +170,15 @@ namespace TcpMonitor
 				StateObject state = (StateObject)result.AsyncState;
 				Socket client = state.workSocket;
 				int bytesRead = client.EndReceive(result);
-				Receive();
 
 				state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
-				string msg = state.sb.ToString();
-
-				HandleMessage(msg);
+				_lastReceivedMessage += state.sb.ToString();
+				// Check if last part of send message.
+				if (_lastReceivedMessage.IndexOf("<EOF>") != -1)
+				{
+					HandleMessage(_lastReceivedMessage);
+				}
+				Receive();
 			}
 			catch (Exception ex)
 			{
@@ -164,8 +190,11 @@ namespace TcpMonitor
 		{
 			try
 			{
-				IMessage message = JsonConvert.DeserializeObject<IMessage>(jsonMessage, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All});
-				
+				_lastReceivedMessage = "";
+
+				jsonMessage = jsonMessage.Remove(jsonMessage.Length - 5);
+				IMessage message = JsonConvert.DeserializeObject<IMessage>(jsonMessage, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All });
+
 				switch (message)
 				{
 					case HeartbeatObject H:
@@ -177,6 +206,9 @@ namespace TcpMonitor
 					case ErrorMessageObject E:
 						HandleErrorMessage(E);
 						break;
+					case QueueItemsMessage I:
+						HandleQueueItemsMessage(I);
+						break;
 					default:
 						break;
 				}
@@ -186,6 +218,20 @@ namespace TcpMonitor
 				// show exception in monitoring form
 				Console.WriteLine(ex.Message);
 			}
+		}
+
+		public delegate List<QueueItem> InitializeDoneEventHandler();
+		public event EventHandler InitializeDoneHanlder;
+
+		private void HandleQueueItemsMessage(QueueItemsMessage i)
+		{
+			InitializeDoneEvent(i.QueueItems);
+			poepUitQueueItems();
+		}
+
+		private List<QueueItem> poepUitQueueItems()
+		{
+
 		}
 
 		private void HandleHeartBeatMessage(HeartbeatObject message)
@@ -214,7 +260,8 @@ namespace TcpMonitor
 
 		private Thread HeartbeatChecker()
 		{
-			return new Thread(() => {
+			return new Thread(() =>
+			{
 				while (true)
 				{
 					try

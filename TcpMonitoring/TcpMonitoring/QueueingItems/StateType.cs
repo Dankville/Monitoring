@@ -4,11 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TcpMonitoring.MessagingObjects
+namespace TcpMonitoring.QueueingItems
 {
-	public class InitalizeMessage : IMessage
+	public enum StateType
 	{
-		public string Data { get; set; }
+		Waiting = 0,
+		Queued = 1,
 
+		InProgress = 3
 	}
 }
