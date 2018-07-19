@@ -6,28 +6,27 @@ using System.Threading.Tasks;
 
 using TcpMonitoring;
 using TcpMonitoring.MessagingObjects;
+using TcpMonitoring.QueueingItems;
 
 namespace TcpMonitorPublisher
 {
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            IMonitoringPublisher server = TcpPublisherServer.Instance;
+	class Program
+	{
+		static void Main(string[] args)
+		{
+			TcpPublisherServer server = TcpPublisherServer.Instance;
 
-            Host host = Host.Instance;
-            host.PublisherServer = server;
-            Task.Run(() => host.PublisherServer.StartServer("127.0.0.1", 9000));
-            
-            while (true)
-            {
-                string keyStr = Console.ReadKey().Key.ToString();
-
-                IMessage message = new MessageObject();
-                message.Data = keyStr;
-
-                host.PublisherServer.SendObject(message);
-            }
-        }
-    }
+			Host host = Host.Instance;
+			host.PublisherServer = server;
+			Task.Run(() => host.PublisherServer.StartServer("127.0.0.1", 9000));
+			
+			foreach(var item in server.mockQueueItems.mockItems)
+			{
+				Console.WriteLine($"Press enter to change state of queueItem {item.ID}");	
+				Console.ReadLine();
+				server.SendQueueItemStateChange(new QueueItemStateChangeMessage() { Data = $"{item.ID} got a new ID", QueueItemId = item.ID, NewState = StateType.Queued });
+			}
+			Console.WriteLine("No more queueitems");
+		}
+	}
 }

@@ -9,7 +9,7 @@ namespace TcpMonitorPublisher
 {
     class Host
     {
-        public IMonitoringPublisher PublisherServer { get; set; }
+        public TcpPublisherServer PublisherServer { get; set; }
 
         private static readonly Host _Instance = new Host();
 

@@ -29,11 +29,6 @@ namespace Monitor
 
 	public class TcpPublisherClient
 	{
-		// Maintaning connection
-		private ManualResetEvent _ConnectDone = new ManualResetEvent(false);
-		private ManualResetEvent _SendDone = new ManualResetEvent(false);
-		private ManualResetEvent _ReceiveDone = new ManualResetEvent(false);
-
 		private Thread _heartBeatChecker;
 		private Thread _receiveLoopTask;
 
@@ -41,6 +36,15 @@ namespace Monitor
 		public int _MissedHeartBeats = 0;
 		public bool IsConnected = false;
 
+		// Events
+		public event ConnectionDoneEventHandler connectionDone;
+		ConnectionDoneEventHandler connectionHandler;
+
+		public event InitializingQueueItemsEventHandler initialQueueItemsReceived;
+		InitializingQueueItemsEventHandler initialQueueItemsHandler;
+
+		public event QueueItemStateChangedEventHandler queueItemStateChange;
+		QueueItemStateChangedEventHandler queueItemStateChangeHandler;
 
 		// Items in the actual queue
 		public QueueItemsHandler queueItemsHandler;
@@ -67,13 +71,13 @@ namespace Monitor
 		{
 			_publisherTcpClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
 			_publisherTcpClient.BeginConnect(ipAddress, port, new AsyncCallback(ConnectCallback), null);
-			_ConnectDone.WaitOne();
+
+			connectionHandler = connectionDone;
 		}
 
 		private void ConnectCallback(IAsyncResult result)
 		{
 			_publisherTcpClient.EndConnect(result);
-			_ConnectDone.Set();
 
 			if (result.IsCompleted)
 			{
@@ -82,9 +86,9 @@ namespace Monitor
 				_receiveLoopTask = NewReceiveLoop();
 				_receiveLoopTask.Start();
 				_heartBeatChecker = HeartbeatChecker();
-				_heartBeatChecker.Start();
+				//_heartBeatChecker.Start();
 
-				ConnectionDoneEvent();
+				connectionHandler();
 			}
 		}
 
@@ -93,7 +97,6 @@ namespace Monitor
 			StateObject state = new StateObject();
 			state.workSocket = _publisherTcpClient;
 			_publisherTcpClient.BeginDisconnect(false, UnSubscribeCallback, state);
-			//Send(new UnsubscribeMessageObject() { Data = "Unsubscribe" });
 		}
 
 		public void Send(IMessage message)
@@ -102,7 +105,6 @@ namespace Monitor
 			{
 				string msgJson = JsonConvert.SerializeObject(message, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All });
 				byte[] byteData = Encoding.ASCII.GetBytes(msgJson);
-
 				switch (message)
 				{
 					case UnsubscribeMessageObject U:
@@ -132,19 +134,24 @@ namespace Monitor
 				_heartBeatChecker.Abort();
 				_publisherTcpClient = null;
 			}
+			else
+			{
+				throw new Exception();
+			}
 		}
 
 		private void InitializeCallback(IAsyncResult result)
 		{
-			try
+			if (result.IsCompleted)
 			{
 				Socket client = (Socket)result.AsyncState;
 				int bytesRead = client.EndSend(result);
 			}
-			catch (Exception ex)
+			else
 			{
-
+				throw new Exception();
 			}
+		
 		}
 
 		private void Receive()
@@ -165,7 +172,7 @@ namespace Monitor
 
 		private void ReceiveCallback(IAsyncResult result)
 		{
-			try
+			if (result.IsCompleted)
 			{
 				StateObject state = (StateObject)result.AsyncState;
 				Socket client = state.workSocket;
@@ -180,9 +187,9 @@ namespace Monitor
 				}
 				Receive();
 			}
-			catch (Exception ex)
+			else
 			{
-				Console.WriteLine(ex.Message);
+				throw new Exception();
 			}
 		}
 
@@ -209,6 +216,9 @@ namespace Monitor
 					case QueueItemsMessage I:
 						HandleQueueItemsMessage(I);
 						break;
+					case QueueItemStateChangeMessage Q:
+						HandleQueueItemStateChangeMessage(Q);
+						break;
 					default:
 						break;
 				}
@@ -220,19 +230,19 @@ namespace Monitor
 			}
 		}
 
-		public delegate List<QueueItem> InitializeDoneEventHandler();
-		public event EventHandler InitializeDoneHanlder;
+		private void HandleQueueItemStateChangeMessage(QueueItemStateChangeMessage q)
+		{
+			QueueItemStateChangedEventHandler handler = queueItemStateChange;
+			handler?.Invoke(q.QueueItemId, q.NewState);
+
+		}
 
 		private void HandleQueueItemsMessage(QueueItemsMessage i)
 		{
-			InitializeDoneEvent(i.QueueItems);
-			poepUitQueueItems();
+			InitializingQueueItemsEventHandler handler = initialQueueItemsReceived;
+			handler?.Invoke(i.QueueItems);
 		}
-
-		private List<QueueItem> poepUitQueueItems()
-		{
-
-		}
+		
 
 		private void HandleHeartBeatMessage(HeartbeatObject message)
 		{

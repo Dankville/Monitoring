@@ -48,6 +48,7 @@
     <Compile Include="MessagingObjects\InitalizeMessage.cs" />
     <Compile Include="MessagingObjects\MessageObject.cs" />
     <Compile Include="MessagingObjects\QueueItemsMessage.cs" />
+    <Compile Include="MessagingObjects\QueueItemStateChangeMessage.cs" />
     <Compile Include="MessagingObjects\SubscribeMessageObject.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="MessagingObjects\UnsubscribeMessageObject.cs" />

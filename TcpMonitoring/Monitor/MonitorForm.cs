@@ -14,18 +14,15 @@ using TcpMonitoring.QueueingItems;
 
 namespace Monitor
 {
+	public delegate void ConnectionDoneEventHandler();
+	public delegate void InitializingQueueItemsEventHandler(List<QueueItem> queueItems);
+	public delegate void QueueItemStateChangedEventHandler(int itemId, StateType newState);
+
 	public partial class MonitorForm : Form
 	{
 		TcpPublisherClient _client;
-
-		// delegates for Monitored Queue events.
-		public delegate void ConnectionDoneEventHandler();
-		public event ConnectionDoneEventHandler ConnectionDoneEvent;
-		public ConnectionDoneEventHandler ConnectionHandler = null;
-			   
-		//public delegate void InitializeDoneEventHandler(List<QueueItem> queueItems);
-		//public event InitializeDoneEventHandler InitializeDoneEvent;
-		//public InitializeDoneEventHandler InitializeHandler = null;
+		List<QueueItem> _queueItems;
+		List<QueueListViewItem> _listViewItems = new List<QueueListViewItem>();
 
 		public MonitorForm()
 		{
@@ -49,48 +46,74 @@ namespace Monitor
 			}
 			catch (Exception ex)
 			{
-
+				MessageBox.Show(ex.Message);
 			}
 		}
 
 		private void Connect(IPAddress ipAddres, int port)
 		{
-			_client = TcpPublisherClient.Instance();
-			_client.BeginConnect(ipAddres, port);
-			ConnectionHandler = new ConnectionDoneEventHandler(OnConnected);
-			ConnectionDoneEvent += ConnectionHandler;
+			try
+			{
+				_client = TcpPublisherClient.Instance();
+				_client.connectionDone += OnConnected;
+
+				_client.BeginConnect(ipAddres, port);
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message);
+			}
 		}
 
 		private void OnConnected()
 		{
-			IMessage initMessage = new InitalizeMessage();
-			initMessage.Data = "Initialize";
-			ConnectionDoneEvent -= ConnectionHandler;
-
-
-			InitializeHandler = new InitializeDoneEventHandler(InitalizeQueueItemsInForm);
-			InitializeDoneEvent += InitializeHandler;
-			_client.Send(initMessage);
-		}
-
-		private void InitalizeQueueItemsInForm(List<QueueItem> queueItems)
-		{
 			try
 			{
-				InitializeDoneEvent -= InitializeHandler;
+				_client.connectionDone -= OnConnected;
+				_client.initialQueueItemsReceived += InitializeQueueItemsInForm;
 
-				foreach (var item in queueItems)
+				IMessage initMessage = new InitalizeMessage();
+				initMessage.Data = "Initialize";
+				_client.Send(initMessage);
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message);
+			}
+
+		}
+
+		private void InitializeQueueItemsInForm(List<QueueItem> queueItems)
+		{
+			_queueItems = queueItems;
+			_client.initialQueueItemsReceived -= InitializeQueueItemsInForm;
+
+			try
+			{
+				foreach (var i in queueItems)
 				{
-					string[] row = { item.ID.ToString(), item.Data };
-					var lvi = new ListViewItem(row);
-
+					var lvi = new ListViewItem(new string[] {i.ID.ToString(), i.Data });
+					_listViewItems.Add(new QueueListViewItem() { ID = i.ID, ListViewItem = lvi });
+					
 					this.listViewWaiting.Items.Add(lvi);
 				}
 			}
 			catch (Exception ex)
 			{
-				ShowException(ex);
+				MessageBox.Show(ex.Message);
 			}
+
+			_client.queueItemStateChange += QueueItemStateChange;
+		}
+
+		private void QueueItemStateChange(int itemID, StateType newState)
+		{
+			QueueItem itemToChange = _queueItems.Where(i => i.ID == itemID).First();
+
+			var lvi = _listViewItems.Where(i => i.ID == itemID).First().ListViewItem;
+			this.listViewWaiting.Items.Remove(lvi);
+
+			this.listView1.Items.Insert(0, lvi);
 		}
 
 		private void ShowException(Exception ex)
@@ -102,6 +125,5 @@ namespace Monitor
 		{
 
 		}
-
 	}
 }

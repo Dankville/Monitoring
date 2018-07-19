@@ -10,7 +10,7 @@ using TcpMonitoring.QueueingItems;
 
 namespace TcpMonitorPublisher
 {
-	class MockQueueItems
+	public class MockQueueItems
 	{
 		public List<QueueItem> mockItems { get; set; }
 

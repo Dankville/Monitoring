@@ -28,19 +28,21 @@ namespace TcpMonitorPublisher
 		public StringBuilder sb = new StringBuilder();
 	}
 
-	public class TcpPublisherServer : IMonitoringPublisher
+	public class TcpPublisherServer
 	{
-		private static readonly IMonitoringPublisher _Instance = new TcpPublisherServer();
+		private static readonly TcpPublisherServer _Instance = new TcpPublisherServer();
+
 		
+
 		private TcpListener _MonitorServer;
 		private Socket _clientSocket = null;
 		private Thread _heartbeatTask;
 		
-		private MockQueueItems _mockQueueItems = new MockQueueItems();
+		public MockQueueItems mockQueueItems = new MockQueueItems();
 		
 		private TcpPublisherServer() { }
 
-		public static IMonitoringPublisher Instance => _Instance;
+		public static TcpPublisherServer Instance => _Instance;
 
 		public void StartServer(string ipStr, int port)
 		{
@@ -62,31 +64,44 @@ namespace TcpMonitorPublisher
 
 		public void WaitForClients()
 		{
+			//_IncomingConnectionDone.WaitOne();
 			Socket monitorClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
 			_MonitorServer.BeginAcceptSocket(new AsyncCallback(OnClientConnected), monitorClient);
 		}
 
 		public void OnClientConnected(IAsyncResult result)
 		{
-			Console.WriteLine("Client Connected.");
-			_clientSocket = _MonitorServer.EndAcceptSocket(result);
+			//_IncomingConnectionDone.Set();
+			if (result.IsCompleted)
+			{
+				Console.WriteLine("Client Connected.");
+				_clientSocket = _MonitorServer.EndAcceptSocket(result);
 
-			//_heartbeatTask = NewHeartBeatTask();
-			//_heartbeatTask.Start();
+				_heartbeatTask = NewHeartBeatTask();
+				//_heartbeatTask.Start();
 
-			WaitForClients();
-			Receive();
+				WaitForClients();
+				Receive();
+			}
+			else
+			{
+				throw new Exception();
+			}
 		}
 
 		// Sending calls
 
 		private void SendAsync(string data)
 		{
-			data += "<EOF>";
 			if (_clientSocket != null)
 			{
+				data += "<EOF>";
 				byte[] byteArr = Encoding.ASCII.GetBytes(data);
 				_clientSocket.BeginSend(byteArr, 0, byteArr.Length, 0, new AsyncCallback(SendCallback), _clientSocket);
+			}
+			else
+			{
+				throw new Exception();
 			}
 		}
 		
@@ -97,18 +112,22 @@ namespace TcpMonitorPublisher
 				byte[] dataBytes = Encoding.ASCII.GetBytes(data);
 				_clientSocket.Send(dataBytes);
 			}
+			else
+			{
+				throw new Exception();
+			}
 		}
 
 		private void SendCallback(IAsyncResult result)
 		{
-			try
+			if (result.IsCompleted)
 			{
 				Socket client = (Socket)result.AsyncState;
 				int bytesSent = client.EndSend(result);
 			}
-			catch (Exception ex)
+			else
 			{
-				Console.WriteLine(ex.Message);
+				throw new Exception();
 			}
 		}
 
@@ -116,32 +135,39 @@ namespace TcpMonitorPublisher
 
 		private void Receive()
 		{
-			try
-			{
+			if (_clientSocket != null)
+			{ 
 				StateObject state = new StateObject();
 				state.workSocket = _clientSocket;
 
 				_clientSocket.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
 			}
-			catch (Exception ex)
+			else
 			{
-
+				throw new Exception();
 			}
 		}
 
 		public void ReceiveCallback(IAsyncResult result)
 		{
-			StateObject state = (StateObject)result.AsyncState;
-			Socket handler = state.workSocket;
-
-			if (handler.Connected)
+			if (result.IsCompleted)
 			{
-				int bytesRead = handler.EndReceive(result);
-				
-				state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
-				string msg = state.sb.ToString();
-				HandleMessage(msg);
-				Receive();
+				StateObject state = (StateObject)result.AsyncState;
+				Socket handler = state.workSocket;
+
+				if (handler.Connected)
+				{
+					int bytesRead = handler.EndReceive(result);
+
+					state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
+					string msg = state.sb.ToString();
+					HandleMessage(msg);
+					Receive();
+				}
+			}
+			else
+			{
+				throw new Exception();
 			}
 		}
 
@@ -173,9 +199,10 @@ namespace TcpMonitorPublisher
 
 		private void HandleInitializeMessage(InitalizeMessage i)
 		{
+			Console.WriteLine("Initializing");
 			QueueItemsMessage queueItems = new QueueItemsMessage();
 			queueItems.Data = "All current queue items";
-			queueItems.QueueItems = _mockQueueItems.mockItems;
+			queueItems.QueueItems = mockQueueItems.mockItems;
 
 			string queueItemsJson = SerializeObjectMessage(queueItems);
 
@@ -235,6 +262,11 @@ namespace TcpMonitorPublisher
 		{
 			Console.WriteLine("Heartbeat sent");
 			Send(SerializeHeartbeat());
+		}
+
+		public void SendQueueItemStateChange(IMessage message)
+		{
+			SendAsync(SerializeObjectMessage(message));
 		}
 
 		private string SerializeMonitorMessage(IMessage message)
