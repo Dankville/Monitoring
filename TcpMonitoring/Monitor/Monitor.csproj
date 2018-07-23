@@ -61,6 +61,7 @@
     <Compile Include="QueueItemsHandler.cs" />
     <Compile Include="QueueListViewItem.cs" />
     <Compile Include="TcpPublisherClient.cs" />
+    <Compile Include="UpdateQueueListView.cs" />
     <EmbeddedResource Include="MonitorForm.resx">
       <DependentUpon>MonitorForm.cs</DependentUpon>
     </EmbeddedResource>

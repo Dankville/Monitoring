@@ -16,7 +16,7 @@ namespace Monitor
 		{
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault(false);
-			Control.CheckForIllegalCrossThreadCalls = false;
+			//Control.CheckForIllegalCrossThreadCalls = false;
 			Application.Run(new MonitorForm());
 		}
 	}

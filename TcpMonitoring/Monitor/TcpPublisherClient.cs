@@ -11,7 +11,7 @@ using Newtonsoft.Json;
 
 using TcpMonitoring.MessagingObjects;
 using TcpMonitoring.QueueingItems;
-
+using System.Windows.Forms;
 
 namespace Monitor
 {
@@ -30,22 +30,12 @@ namespace Monitor
 	public class TcpPublisherClient
 	{
 		private Thread _heartBeatChecker;
-		private Thread _receiveLoopTask;
 
 		public Socket _publisherTcpClient;
+		public Socket _heartbeatTcpClient;
 		public int _MissedHeartBeats = 0;
 		public bool IsConnected = false;
-
-		// Events
-		public event ConnectionDoneEventHandler connectionDone;
-		ConnectionDoneEventHandler connectionHandler;
-
-		public event InitializingQueueItemsEventHandler initialQueueItemsReceived;
-		InitializingQueueItemsEventHandler initialQueueItemsHandler;
-
-		public event QueueItemStateChangedEventHandler queueItemStateChange;
-		QueueItemStateChangedEventHandler queueItemStateChangeHandler;
-
+		
 		// Items in the actual queue
 		public QueueItemsHandler queueItemsHandler;
 
@@ -69,26 +59,33 @@ namespace Monitor
 
 		public void BeginConnect(IPAddress ipAddress, int port)
 		{
-			_publisherTcpClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
-			_publisherTcpClient.BeginConnect(ipAddress, port, new AsyncCallback(ConnectCallback), null);
-
-			connectionHandler = connectionDone;
+			if (!IsConnected)
+			{
+				_publisherTcpClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
+				_publisherTcpClient.BeginConnect(ipAddress, port, new AsyncCallback(ConnectCallback), null);
+			}
 		}
 
 		private void ConnectCallback(IAsyncResult result)
 		{
-			_publisherTcpClient.EndConnect(result);
-
-			if (result.IsCompleted)
+			try
 			{
-				IsConnected = true;
-				Console.WriteLine("Connected");
-				_receiveLoopTask = NewReceiveLoop();
-				_receiveLoopTask.Start();
-				_heartBeatChecker = HeartbeatChecker();
-				//_heartBeatChecker.Start();
+				_publisherTcpClient.EndConnect(result);
 
-				connectionHandler();
+				if (result.IsCompleted)
+				{
+					IsConnected = true;
+					Console.WriteLine("Connected");
+
+					Receive();
+
+					_heartBeatChecker = HeartbeatChecker();
+					//_heartBeatChecker.Start();
+				}
+			}
+			catch (Exception)
+			{
+				MessageBox.Show("Could not make a connection to the machine with those credentials.");
 			}
 		}
 
@@ -110,8 +107,8 @@ namespace Monitor
 					case UnsubscribeMessageObject U:
 						_publisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(UnSubscribeCallback), _publisherTcpClient);
 						break;
-					case InitalizeMessage I:
-						_publisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(InitializeCallback), _publisherTcpClient);
+					case ErrorMessageObject E:
+						_publisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(ErrorMessageCallback), _publisherTcpClient);
 						break;
 					default:
 						break;
@@ -125,12 +122,23 @@ namespace Monitor
 			}
 		}
 
+		private void ErrorMessageCallback(IAsyncResult ar)
+		{
+			if (ar.IsCompleted)
+			{
+				// handle error message
+			}
+			else
+			{
+				throw new Exception();
+			}
+		}
+
 		private void UnSubscribeCallback(IAsyncResult result)
 		{
 			if (result.IsCompleted)
 			{
 				IsConnected = false;
-				_receiveLoopTask.Abort();
 				_heartBeatChecker.Abort();
 				_publisherTcpClient = null;
 			}
@@ -185,6 +193,7 @@ namespace Monitor
 				{
 					HandleMessage(_lastReceivedMessage);
 				}
+				
 				Receive();
 			}
 			else
@@ -195,10 +204,9 @@ namespace Monitor
 
 		private void HandleMessage(string jsonMessage)
 		{
+			_lastReceivedMessage = "";
 			try
 			{
-				_lastReceivedMessage = "";
-
 				jsonMessage = jsonMessage.Remove(jsonMessage.Length - 5);
 				IMessage message = JsonConvert.DeserializeObject<IMessage>(jsonMessage, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All });
 
@@ -232,15 +240,16 @@ namespace Monitor
 
 		private void HandleQueueItemStateChangeMessage(QueueItemStateChangeMessage q)
 		{
-			QueueItemStateChangedEventHandler handler = queueItemStateChange;
-			handler?.Invoke(q.QueueItemId, q.NewState);
-
+			//QueueItemStateChangedEventHandler handler = queueItemStateChange;
+			//handler?.Invoke(q.QueueItemId, q.OldState, q.NewState);
+			UpdateQueueListView.UpdateQueueListViewItem(q.QueueItemId, q.OldState, q.NewState);
 		}
 
 		private void HandleQueueItemsMessage(QueueItemsMessage i)
 		{
-			InitializingQueueItemsEventHandler handler = initialQueueItemsReceived;
-			handler?.Invoke(i.QueueItems);
+			//InitializingQueueItemsEventHandler handler = initialQueueItemsReceived;
+			//handler?.Invoke(i.QueueItems);
+			UpdateQueueListView.InitializeQueueListView(i.QueueItems);
 		}
 		
 

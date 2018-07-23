@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -14,18 +13,16 @@ using TcpMonitoring.QueueingItems;
 
 namespace Monitor
 {
-	public delegate void ConnectionDoneEventHandler();
-	public delegate void InitializingQueueItemsEventHandler(List<QueueItem> queueItems);
-	public delegate void QueueItemStateChangedEventHandler(int itemId, StateType newState);
-
 	public partial class MonitorForm : Form
 	{
 		TcpPublisherClient _client;
-		List<QueueItem> _queueItems;
-		List<QueueListViewItem> _listViewItems = new List<QueueListViewItem>();
+		static object _ListViewItemLock = new object();
+		
+		static Dictionary<Guid, ListViewItem> _listViewItems = new Dictionary<Guid, ListViewItem>();
 
 		public MonitorForm()
 		{
+			UpdateQueueListView.MonitorForm = this;
 			InitializeComponent();
 		}
 
@@ -33,11 +30,18 @@ namespace Monitor
 		{
 			try
 			{
-				IPAddress ipadd;
-				int port;
-				if (Int32.TryParse(txtBoxPort.Text, out port) && IPAddress.TryParse(txtBoxIpAddress.Text, out ipadd))
+				if (Int32.TryParse(txtBoxPort.Text, out var port) && IPAddress.TryParse(txtBoxIpAddress.Text, out var ipadd))
 				{
-					Connect(ipadd, port);
+					try
+					{
+						_client = TcpPublisherClient.Instance();
+						UpdateQueueListView.OnInitializingQueueItemsInListView += InitializeQueueItemsInForm;
+						_client.BeginConnect(ipadd, port);
+					}
+					catch (Exception ex)
+					{
+						MessageBox.Show(ex.Message);
+					}
 				}
 				else
 				{
@@ -50,80 +54,75 @@ namespace Monitor
 			}
 		}
 
-		private void Connect(IPAddress ipAddres, int port)
-		{
-			try
-			{
-				_client = TcpPublisherClient.Instance();
-				_client.connectionDone += OnConnected;
-
-				_client.BeginConnect(ipAddres, port);
-			}
-			catch (Exception ex)
-			{
-				MessageBox.Show(ex.Message);
-			}
-		}
-
-		private void OnConnected()
-		{
-			try
-			{
-				_client.connectionDone -= OnConnected;
-				_client.initialQueueItemsReceived += InitializeQueueItemsInForm;
-
-				IMessage initMessage = new InitalizeMessage();
-				initMessage.Data = "Initialize";
-				_client.Send(initMessage);
-			}
-			catch (Exception ex)
-			{
-				MessageBox.Show(ex.Message);
-			}
-
-		}
-
 		private void InitializeQueueItemsInForm(List<QueueItem> queueItems)
 		{
-			_queueItems = queueItems;
-			_client.initialQueueItemsReceived -= InitializeQueueItemsInForm;
-
 			try
 			{
-				foreach (var i in queueItems)
+				for (int x = 0; x < queueItems.Count; x++)
 				{
-					var lvi = new ListViewItem(new string[] {i.ID.ToString(), i.Data });
-					_listViewItems.Add(new QueueListViewItem() { ID = i.ID, ListViewItem = lvi });
-					
-					this.listViewWaiting.Items.Add(lvi);
+					ListViewItem lvi = new ListViewItem(queueItems[x].Data);
+					_listViewItems.Add(queueItems[x].ID, lvi);
+
+					switch (queueItems[x].QueueItemState)
+					{
+						case (StateType.Waiting):
+							this.listViewWaiting.Items.Add(lvi);
+							break;
+						case (StateType.Queued):
+							this.listViewQueued.Items.Add(lvi);
+							break;
+						case (StateType.InProgress):
+							this.listViewInProgress.Items.Add(lvi);
+							break;
+						default:
+							break;
+					}
+				}	
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message);
+			}
+			UpdateQueueListView.OnQueueItemChanged += QueueItemStateChange;
+		}
+
+		private void QueueItemStateChange(Guid itemID, StateType oldState, StateType newState)
+		{
+			try
+			{
+				var lvi = _listViewItems[itemID];
+				
+				switch (oldState)
+				{
+					case StateType.Waiting:
+						this.listViewWaiting.Items.Remove(lvi);
+						break;
+					case StateType.Queued:
+						this.listViewQueued.Items.Remove(lvi);
+						break;
+					case StateType.InProgress:
+						this.listViewInProgress.Items.Remove(lvi);
+						break;
+				}
+
+				switch (newState)
+				{
+					case StateType.Waiting:
+						this.listViewWaiting.Items.Insert(0, lvi);
+						break;
+					case StateType.Queued:
+						this.listViewQueued.Items.Insert(0, lvi);
+						break;
+					case StateType.InProgress:
+						this.listViewInProgress.Items.Insert(0, lvi);
+						break;
 				}
 			}
 			catch (Exception ex)
 			{
+				_client.Send(new ErrorMessageObject() { Data = "Error occured "});
 				MessageBox.Show(ex.Message);
 			}
-
-			_client.queueItemStateChange += QueueItemStateChange;
-		}
-
-		private void QueueItemStateChange(int itemID, StateType newState)
-		{
-			QueueItem itemToChange = _queueItems.Where(i => i.ID == itemID).First();
-
-			var lvi = _listViewItems.Where(i => i.ID == itemID).First().ListViewItem;
-			this.listViewWaiting.Items.Remove(lvi);
-
-			this.listView1.Items.Insert(0, lvi);
-		}
-
-		private void ShowException(Exception ex)
-		{
-			MessageBox.Show(ex.Message);
-		}
-
-		private void UpdateQueueItemInForm()
-		{
-
 		}
 	}
 }
