@@ -29,33 +29,17 @@ namespace Monitor
 
 	public class TcpPublisherClient
 	{
-		private Thread _heartBeatChecker;
-
 		public Socket _publisherTcpClient;
-		public Socket _heartbeatTcpClient;
 		public int _MissedHeartBeats = 0;
 		public bool IsConnected = false;
 		
-		// Items in the actual queue
-		public QueueItemsHandler queueItemsHandler;
-
 		private string _lastReceivedMessage;
 
 		// Singleton
-		private static TcpPublisherClient _Instance = null;
-		public static TcpPublisherClient Instance()
-		{
-			if (_Instance == null)
-			{
-				_Instance = new TcpPublisherClient();
-			}
-			return _Instance;
-		}
+		private static readonly TcpPublisherClient _Instance = new TcpPublisherClient();
+		public static TcpPublisherClient Instance => _Instance;
 
-		private TcpPublisherClient()
-		{
-			queueItemsHandler = new QueueItemsHandler();
-		}
+		private TcpPublisherClient(){ }
 
 		public void BeginConnect(IPAddress ipAddress, int port)
 		{
@@ -75,12 +59,7 @@ namespace Monitor
 				if (result.IsCompleted)
 				{
 					IsConnected = true;
-					Console.WriteLine("Connected");
-
 					Receive();
-
-					_heartBeatChecker = HeartbeatChecker();
-					//_heartBeatChecker.Start();
 				}
 			}
 			catch (Exception)
@@ -139,7 +118,6 @@ namespace Monitor
 			if (result.IsCompleted)
 			{
 				IsConnected = false;
-				_heartBeatChecker.Abort();
 				_publisherTcpClient = null;
 			}
 			else
@@ -154,6 +132,8 @@ namespace Monitor
 			{
 				Socket client = (Socket)result.AsyncState;
 				int bytesRead = client.EndSend(result);
+
+
 			}
 			else
 			{
@@ -180,25 +160,37 @@ namespace Monitor
 
 		private void ReceiveCallback(IAsyncResult result)
 		{
-			if (result.IsCompleted)
+			try
 			{
-				StateObject state = (StateObject)result.AsyncState;
-				Socket client = state.workSocket;
-				int bytesRead = client.EndReceive(result);
-
-				state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
-				_lastReceivedMessage += state.sb.ToString();
-				// Check if last part of send message.
-				if (_lastReceivedMessage.IndexOf("<EOF>") != -1)
+				if (result.IsCompleted)
 				{
-					HandleMessage(_lastReceivedMessage);
+					StateObject state = (StateObject)result.AsyncState;
+					Socket client = state.workSocket;
+					int bytesRead = client.EndReceive(result);
+
+					state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
+					_lastReceivedMessage += state.sb.ToString();
+					// Check if last part of send message.
+					if (_lastReceivedMessage.IndexOf("<EOF>") != -1)
+					{
+						HandleMessage(_lastReceivedMessage);
+					}
+
+					Receive();
 				}
-				
-				Receive();
+				else
+				{
+					throw new Exception();
+				}
 			}
-			else
+			catch (SocketException sockEx)
 			{
-				throw new Exception();
+				// try reconnect
+				MessageBox.Show("MonitorClient error: " + sockEx.Message);
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message);
 			}
 		}
 
@@ -212,20 +204,17 @@ namespace Monitor
 
 				switch (message)
 				{
-					case HeartbeatObject H:
-						HandleHeartBeatMessage(H);
-						break;
-					case MessageObject M:
-						HandleObjectMessage(M);
-						break;
 					case ErrorMessageObject E:
 						HandleErrorMessage(E);
 						break;
-					case QueueItemsMessage I:
-						HandleQueueItemsMessage(I);
+					case MonitoringInitializationMessage I:
+						HandleInitializationMessage(I);
 						break;
 					case QueueItemStateChangeMessage Q:
 						HandleQueueItemStateChangeMessage(Q);
+						break;
+					case List<QueueItemStateChangeMessage> LQ:
+
 						break;
 					default:
 						break;
@@ -234,76 +223,32 @@ namespace Monitor
 			catch (Exception ex)
 			{
 				// show exception in monitoring form
-				Console.WriteLine(ex.Message);
+				MessageBox.Show(ex.Message);
 			}
 		}
 
 		private void HandleQueueItemStateChangeMessage(QueueItemStateChangeMessage q)
 		{
-			//QueueItemStateChangedEventHandler handler = queueItemStateChange;
-			//handler?.Invoke(q.QueueItemId, q.OldState, q.NewState);
-			UpdateQueueListView.UpdateQueueListViewItem(q.QueueItemId, q.OldState, q.NewState);
+			UpdateMonitorForm.UpdateQueueListViewItem(q.QueueItemId, q.OldState, q.NewState);
 		}
 
-		private void HandleQueueItemsMessage(QueueItemsMessage i)
-		{
-			//InitializingQueueItemsEventHandler handler = initialQueueItemsReceived;
-			//handler?.Invoke(i.QueueItems);
-			UpdateQueueListView.InitializeQueueListView(i.QueueItems);
-		}
-		
-
-		private void HandleHeartBeatMessage(HeartbeatObject message)
-		{
-			// do something idk what yet, depends on XIMEx.
-			_MissedHeartBeats = 0;
-		}
-
-		private void HandleObjectMessage(MessageObject message)
+		private void HandleInitializationMessage(MonitoringInitializationMessage i)
 		{
 			try
 			{
-				Console.WriteLine(message.Data);
+				HeartBeatClient.Instance.BeginConnect(i.HeartbeatPublisherIpAdress, i.HeartbeatPublisherPort);
 			}
-			catch (Exception ex)
+			catch (Exception)
 			{
-				// show exception in monitoring form
-				Console.WriteLine(ex.Message);
+				// TODO heartbeat initialization exception.
 			}
+			UpdateMonitorForm.InitializeQueueListView(i.QueueItems);
 		}
 
 		private void HandleErrorMessage(ErrorMessageObject error)
 		{
 			Console.WriteLine(error.Data);
 		}
-
-		private Thread HeartbeatChecker()
-		{
-			return new Thread(() =>
-			{
-				while (true)
-				{
-					try
-					{
-						Thread.Sleep(1000);
-
-						if (_MissedHeartBeats >= 5)
-						{
-							Console.WriteLine("5 heartbeats missed, connection closed.");
-							Close();
-							break;
-						}
-						_MissedHeartBeats++;
-					}
-					catch (Exception ex)
-					{
-						// show exception in monitoring form
-						Console.WriteLine(ex.Message);
-					}
-				}
-			});
-		}
-
 
 		private Thread NewReceiveLoop()
 		{

@@ -8,17 +8,28 @@ using TcpMonitoring.QueueingItems;
 
 namespace Monitor
 {
-
-	public delegate void ConnectionDoneEventHandler();
+	public delegate void ConnectionEventHandler(bool connected);
 	public delegate void InitializingQueueItemsEventHandler(List<QueueItem> queueItems);
 	public delegate void QueueItemStateChangedEventHandler(Guid itemId, StateType oldState, StateType newState);
 
-	public static class UpdateQueueListView
+	public static class UpdateMonitorForm
 	{
 		public static MonitorForm MonitorForm;
 
+		public static event ConnectionEventHandler OnConnectionStateChange;
 		public static event InitializingQueueItemsEventHandler OnInitializingQueueItemsInListView;
 		public static event QueueItemStateChangedEventHandler OnQueueItemChanged;
+
+		public static void ConnectionStateChange(bool connected)
+		{
+			ThreadSafeConnectionStateChange(connected);
+		}
+
+		private static void ThreadSafeConnectionStateChange(bool connected)
+		{
+			if (MonitorForm != null && MonitorForm.InvokeRequired) MonitorForm.Invoke(new ConnectionEventHandler(ThreadSafeConnectionStateChange), new object[] { connected });
+			else OnConnectionStateChange(connected);
+		}
 
 		public static void InitializeQueueListView(List<QueueItem> queueItems)
 		{

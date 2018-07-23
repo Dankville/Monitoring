@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -16,13 +17,12 @@ namespace Monitor
 	public partial class MonitorForm : Form
 	{
 		TcpPublisherClient _client;
-		static object _ListViewItemLock = new object();
 		
 		static Dictionary<Guid, ListViewItem> _listViewItems = new Dictionary<Guid, ListViewItem>();
 
 		public MonitorForm()
 		{
-			UpdateQueueListView.MonitorForm = this;
+			UpdateMonitorForm.MonitorForm = this;
 			InitializeComponent();
 		}
 
@@ -34,9 +34,12 @@ namespace Monitor
 				{
 					try
 					{
-						_client = TcpPublisherClient.Instance();
-						UpdateQueueListView.OnInitializingQueueItemsInListView += InitializeQueueItemsInForm;
+						_client = TcpPublisherClient.Instance;
 						_client.BeginConnect(ipadd, port);
+
+
+						UpdateMonitorForm.OnInitializingQueueItemsInListView += InitializeQueueItemsInForm;
+						UpdateMonitorForm.OnConnectionStateChange += ConnectionStateChange;
 					}
 					catch (Exception ex)
 					{
@@ -83,7 +86,7 @@ namespace Monitor
 			{
 				MessageBox.Show(ex.Message);
 			}
-			UpdateQueueListView.OnQueueItemChanged += QueueItemStateChange;
+			UpdateMonitorForm.OnQueueItemChanged += QueueItemStateChange;
 		}
 
 		private void QueueItemStateChange(Guid itemID, StateType oldState, StateType newState)
@@ -120,8 +123,22 @@ namespace Monitor
 			}
 			catch (Exception ex)
 			{
-				_client.Send(new ErrorMessageObject() { Data = "Error occured "});
+				_client.Send(new ErrorMessageObject() { Data = "Error occured"});
 				MessageBox.Show(ex.Message);
+			}
+		}
+
+		private void ConnectionStateChange(bool connected)
+		{
+			if (connected)
+			{
+				this.lblAlive.Text = "Connected";
+				this.lblAlive.ForeColor = Color.FromName("Green");
+			}
+			else
+			{
+				this.lblAlive.Text = "Disconnected";
+				this.lblAlive.ForeColor = Color.FromName("Red");
 			}
 		}
 	}

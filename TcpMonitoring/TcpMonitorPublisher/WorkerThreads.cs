@@ -51,7 +51,9 @@ namespace TcpMonitorPublisher
 
 				string messageData = $"{itemToChange.Data} from state {oldState} => {newState}";
 				Console.WriteLine(messageData);
-				Host.Instance.PublisherServer.SendQueueItemStateChange(new QueueItemStateChangeMessage(itemToChange.ID, oldState, newState, messageData));
+
+			if (Host.Instance.PublisherServer.clientSocket.Connected)
+					Host.Instance.PublisherServer.SendQueueItemStateChange(new QueueItemStateChangeMessage(itemToChange.ID, oldState, newState, messageData));
 			}
 
 			Console.WriteLine("Worker is done, no more queue items in waiting or queued state.");

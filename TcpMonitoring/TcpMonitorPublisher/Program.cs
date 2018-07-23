@@ -15,29 +15,11 @@ namespace TcpMonitorPublisher
 	{
 		static void Main(string[] args)
 		{
-			TcpPublisherServer server = TcpPublisherServer.Instance;
-
 			Host host = Host.Instance;
-			host.PublisherServer = server;
-			Task.Run(() => host.PublisherServer.StartServer("127.0.0.1", 9000));
 
-			Console.WriteLine("Press [enter] to start mockqueueitems worker");
+			Console.WriteLine("Press [enter] to start mock items worker");
 			Console.ReadLine();
-
-			WorkerThreads.MockQueueItemsWorkers.Start();
-
-			Console.ReadLine();
-
+			host.StartMockItemsWorker();
 		}
-
-		static Thread MockQueueItemsWorker(TcpPublisherServer server)
-		{
-			return new Thread(() =>
-			{
-				
-			});
-
-		} 
-
 	}
 }

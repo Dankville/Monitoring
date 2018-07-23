@@ -50,6 +50,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="HeartBeatClient.cs" />
     <Compile Include="MonitorForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -61,7 +62,7 @@
     <Compile Include="QueueItemsHandler.cs" />
     <Compile Include="QueueListViewItem.cs" />
     <Compile Include="TcpPublisherClient.cs" />
-    <Compile Include="UpdateQueueListView.cs" />
+    <Compile Include="UpdateMonitorForm.cs" />
     <EmbeddedResource Include="MonitorForm.resx">
       <DependentUpon>MonitorForm.cs</DependentUpon>
     </EmbeddedResource>

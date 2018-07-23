@@ -34,9 +34,7 @@ namespace TcpMonitorPublisher
 
 		
 		private TcpListener _MonitorServer;
-		private Socket _clientSocket = null;
-		private Socket _heartBeatSocket = null;
-		private Thread _heartbeatTask;
+		public Socket clientSocket = null;
 		
 		private TcpPublisherServer() { }
 
@@ -52,7 +50,7 @@ namespace TcpMonitorPublisher
 				Console.WriteLine("Publisher Server running and waiting for clients.");
 				WaitForClients();
 			}
-			catch (Exception ex)
+			catch (Exception)
 			{
 
 			}
@@ -73,12 +71,7 @@ namespace TcpMonitorPublisher
 			if (result.IsCompleted)
 			{
 				Console.WriteLine("Client Connected.");
-				_clientSocket = _MonitorServer.EndAcceptSocket(result);
-
-
-				_heartbeatTask = NewHeartBeatTask();
-				//_heartbeatTask.Start();
-
+				clientSocket = _MonitorServer.EndAcceptSocket(result);
 				WaitForClients();
 				Receive();
 				InitializeClient();
@@ -92,7 +85,7 @@ namespace TcpMonitorPublisher
 		private void InitializeClient()
 		{
 			Console.WriteLine("Initializing");
-			QueueItemsMessage queueItems = new QueueItemsMessage();
+			MonitoringInitializationMessage queueItems = new MonitoringInitializationMessage(MockQueueItems.items, HeartBeatPublisher.ipAddress.ToString(), HeartBeatPublisher.Port);
 			queueItems.Data = "All current queue items";
 			queueItems.QueueItems = MockQueueItems.items;
 
@@ -105,11 +98,11 @@ namespace TcpMonitorPublisher
 
 		private void SendAsync(string data)
 		{
-			if (_clientSocket != null)
+			if (clientSocket != null)
 			{
 				data += "<EOF>";
 				byte[] byteArr = Encoding.ASCII.GetBytes(data);
-				_clientSocket.BeginSend(byteArr, 0, byteArr.Length, 0, new AsyncCallback(SendCallback), _clientSocket);
+				clientSocket.BeginSend(byteArr, 0, byteArr.Length, 0, new AsyncCallback(SendCallback), clientSocket);
 			}
 			else
 			{
@@ -119,23 +112,10 @@ namespace TcpMonitorPublisher
 		
 		private void Send(string data)
 		{
-			if (_clientSocket != null)
+			if (clientSocket != null)
 			{
 				byte[] dataBytes = Encoding.ASCII.GetBytes(data);
-				_clientSocket.Send(dataBytes);
-			}
-			else
-			{
-				throw new Exception();
-			}
-		}
-
-		private void SendHeartBeat()
-		{
-			if (_heartBeatSocket != null)
-			{
-				byte[] dataBytes = Encoding.ASCII.GetBytes(SerializeHeartbeat());
-				_heartBeatSocket.Send(dataBytes);
+				clientSocket.Send(dataBytes);
 			}
 			else
 			{
@@ -157,15 +137,14 @@ namespace TcpMonitorPublisher
 		}
 
 		// Receiving calls.
-
 		private void Receive()
 		{
-			if (_clientSocket != null)
+			if (clientSocket != null)
 			{ 
 				StateObject state = new StateObject();
-				state.workSocket = _clientSocket;
+				state.workSocket = clientSocket;
 
-				_clientSocket.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
+				clientSocket.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
 			}
 			else
 			{
@@ -216,7 +195,7 @@ namespace TcpMonitorPublisher
 						break;
 				}
 			}
-			catch (Exception ex)
+			catch (Exception)
 			{
 
 			}
@@ -235,36 +214,9 @@ namespace TcpMonitorPublisher
 		}
 
 		// Helper methods
-
-		private Thread NewHeartBeatTask()
-		{
-			return new Thread(() =>
-			{
-				while (true)
-				{
-					SendHeartBeat();
-					Thread.Sleep(1000);
-				}
-			});
-		}
-
 		private string SerializeObjectMessage(IMessage obj)
 		{
 			return JsonConvert.SerializeObject(obj, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
-		}
-
-		private string SerializeHeartbeat()
-		{
-			try
-			{
-				HeartbeatObject heartbeat = new HeartbeatObject();
-				heartbeat.Data = "Heartbeat data";
-				return JsonConvert.SerializeObject(heartbeat, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
-			}
-			catch (Exception ex)
-			{
-				throw new Exception();
-			}
 		}
 
 		public void SendErrorMessage(IMessage errorMessage)
@@ -296,9 +248,8 @@ namespace TcpMonitorPublisher
 
 		public void Close()
 		{
-			_heartbeatTask.Abort();
-			_clientSocket.Close();
-			_clientSocket = null;
+			clientSocket.Close();
+			clientSocket = null;
 		}
 	}
 }
