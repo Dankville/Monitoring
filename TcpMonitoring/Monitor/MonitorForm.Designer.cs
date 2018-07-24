@@ -43,12 +43,16 @@
 			this.lblQueued = new System.Windows.Forms.Label();
 			this.lblInProgress = new System.Windows.Forms.Label();
 			this.lblAlive = new System.Windows.Forms.Label();
+			this.btnDisconnect = new System.Windows.Forms.Button();
+			this.lblWaitingAmount = new System.Windows.Forms.Label();
+			this.lblQueuedAmount = new System.Windows.Forms.Label();
+			this.lblInProgressAmount = new System.Windows.Forms.Label();
 			this.SuspendLayout();
 			// 
 			// btnConnect
 			// 
 			this.btnConnect.Location = new System.Drawing.Point(11, 30);
-			this.btnConnect.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+			this.btnConnect.Margin = new System.Windows.Forms.Padding(2);
 			this.btnConnect.Name = "btnConnect";
 			this.btnConnect.Size = new System.Drawing.Size(75, 27);
 			this.btnConnect.TabIndex = 0;
@@ -69,7 +73,7 @@
 			// txtBoxIpAddress
 			// 
 			this.txtBoxIpAddress.Location = new System.Drawing.Point(72, 6);
-			this.txtBoxIpAddress.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+			this.txtBoxIpAddress.Margin = new System.Windows.Forms.Padding(2);
 			this.txtBoxIpAddress.Name = "txtBoxIpAddress";
 			this.txtBoxIpAddress.Size = new System.Drawing.Size(55, 20);
 			this.txtBoxIpAddress.TabIndex = 2;
@@ -88,7 +92,7 @@
 			// txtBoxPort
 			// 
 			this.txtBoxPort.Location = new System.Drawing.Point(165, 6);
-			this.txtBoxPort.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+			this.txtBoxPort.Margin = new System.Windows.Forms.Padding(2);
 			this.txtBoxPort.Name = "txtBoxPort";
 			this.txtBoxPort.Size = new System.Drawing.Size(39, 20);
 			this.txtBoxPort.TabIndex = 4;
@@ -97,12 +101,12 @@
 			// listViewWaiting
 			// 
 			this.listViewWaiting.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.ListViewItemColumnHeader});
+			this.ListViewItemColumnHeader});
 			this.listViewWaiting.GridLines = true;
-			this.listViewWaiting.Location = new System.Drawing.Point(11, 83);
-			this.listViewWaiting.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+			this.listViewWaiting.Location = new System.Drawing.Point(13, 83);
+			this.listViewWaiting.Margin = new System.Windows.Forms.Padding(2);
 			this.listViewWaiting.Name = "listViewWaiting";
-			this.listViewWaiting.Size = new System.Drawing.Size(201, 391);
+			this.listViewWaiting.Size = new System.Drawing.Size(201, 744);
 			this.listViewWaiting.TabIndex = 5;
 			this.listViewWaiting.UseCompatibleStateImageBehavior = false;
 			this.listViewWaiting.View = System.Windows.Forms.View.Details;
@@ -125,11 +129,11 @@
 			// listViewQueued
 			// 
 			this.listViewQueued.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.columnHeader2});
+			this.columnHeader2});
 			this.listViewQueued.GridLines = true;
 			this.listViewQueued.Location = new System.Drawing.Point(219, 83);
 			this.listViewQueued.Name = "listViewQueued";
-			this.listViewQueued.Size = new System.Drawing.Size(201, 391);
+			this.listViewQueued.Size = new System.Drawing.Size(201, 743);
 			this.listViewQueued.TabIndex = 7;
 			this.listViewQueued.UseCompatibleStateImageBehavior = false;
 			this.listViewQueued.View = System.Windows.Forms.View.Details;
@@ -142,12 +146,12 @@
 			// listViewInProgress
 			// 
 			this.listViewInProgress.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.columnHeader4});
+			this.columnHeader4});
 			this.listViewInProgress.GridLines = true;
 			this.listViewInProgress.Location = new System.Drawing.Point(423, 83);
-			this.listViewInProgress.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+			this.listViewInProgress.Margin = new System.Windows.Forms.Padding(2);
 			this.listViewInProgress.Name = "listViewInProgress";
-			this.listViewInProgress.Size = new System.Drawing.Size(201, 391);
+			this.listViewInProgress.Size = new System.Drawing.Size(201, 743);
 			this.listViewInProgress.TabIndex = 8;
 			this.listViewInProgress.UseCompatibleStateImageBehavior = false;
 			this.listViewInProgress.View = System.Windows.Forms.View.Details;
@@ -187,11 +191,52 @@
 			this.lblAlive.TabIndex = 11;
 			this.lblAlive.Text = "Disconnected";
 			// 
+			// btnDisconnect
+			// 
+			this.btnDisconnect.Location = new System.Drawing.Point(91, 30);
+			this.btnDisconnect.Name = "btnDisconnect";
+			this.btnDisconnect.Size = new System.Drawing.Size(75, 27);
+			this.btnDisconnect.TabIndex = 12;
+			this.btnDisconnect.Text = "Disconnect";
+			this.btnDisconnect.UseVisualStyleBackColor = true;
+			this.btnDisconnect.Click += new System.EventHandler(this.btnDisconnect_Click);
+			// 
+			// lblWaitingAmount
+			// 
+			this.lblWaitingAmount.AutoSize = true;
+			this.lblWaitingAmount.Location = new System.Drawing.Point(191, 68);
+			this.lblWaitingAmount.Name = "lblWaitingAmount";
+			this.lblWaitingAmount.Size = new System.Drawing.Size(13, 13);
+			this.lblWaitingAmount.TabIndex = 13;
+			this.lblWaitingAmount.Text = "0";
+			// 
+			// lblQueuedAmount
+			// 
+			this.lblQueuedAmount.AutoSize = true;
+			this.lblQueuedAmount.Location = new System.Drawing.Point(393, 68);
+			this.lblQueuedAmount.Name = "lblQueuedAmount";
+			this.lblQueuedAmount.Size = new System.Drawing.Size(13, 13);
+			this.lblQueuedAmount.TabIndex = 14;
+			this.lblQueuedAmount.Text = "0";
+			// 
+			// lblInProgressAmount
+			// 
+			this.lblInProgressAmount.AutoSize = true;
+			this.lblInProgressAmount.Location = new System.Drawing.Point(602, 68);
+			this.lblInProgressAmount.Name = "lblInProgressAmount";
+			this.lblInProgressAmount.Size = new System.Drawing.Size(13, 13);
+			this.lblInProgressAmount.TabIndex = 15;
+			this.lblInProgressAmount.Text = "0";
+			// 
 			// MonitorForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(637, 473);
+			this.ClientSize = new System.Drawing.Size(637, 838);
+			this.Controls.Add(this.lblInProgressAmount);
+			this.Controls.Add(this.lblQueuedAmount);
+			this.Controls.Add(this.lblWaitingAmount);
+			this.Controls.Add(this.btnDisconnect);
 			this.Controls.Add(this.lblAlive);
 			this.Controls.Add(this.lblInProgress);
 			this.Controls.Add(this.lblQueued);
@@ -204,7 +249,7 @@
 			this.Controls.Add(this.txtBoxIpAddress);
 			this.Controls.Add(this.lblIpAddress);
 			this.Controls.Add(this.btnConnect);
-			this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+			this.Margin = new System.Windows.Forms.Padding(2);
 			this.Name = "MonitorForm";
 			this.Text = "Form1";
 			this.ResumeLayout(false);
@@ -229,6 +274,10 @@
 		private System.Windows.Forms.Label lblInProgress;
 		private System.Windows.Forms.ColumnHeader columnHeader4;
 		private System.Windows.Forms.Label lblAlive;
+		private System.Windows.Forms.Button btnDisconnect;
+		private System.Windows.Forms.Label lblWaitingAmount;
+		private System.Windows.Forms.Label lblQueuedAmount;
+		private System.Windows.Forms.Label lblInProgressAmount;
 	}
 }
 

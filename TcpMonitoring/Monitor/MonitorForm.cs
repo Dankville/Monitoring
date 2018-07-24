@@ -16,8 +16,6 @@ namespace Monitor
 {
 	public partial class MonitorForm : Form
 	{
-		TcpPublisherClient _client;
-		
 		static Dictionary<Guid, ListViewItem> _listViewItems = new Dictionary<Guid, ListViewItem>();
 
 		public MonitorForm()
@@ -32,18 +30,10 @@ namespace Monitor
 			{
 				if (Int32.TryParse(txtBoxPort.Text, out var port) && IPAddress.TryParse(txtBoxIpAddress.Text, out var ipadd))
 				{
-					try
+					if (TcpPublisherClient.Instance.BeginConnect(ipadd, port))
 					{
-						_client = TcpPublisherClient.Instance;
-						_client.BeginConnect(ipadd, port);
-
-
 						UpdateMonitorForm.OnInitializingQueueItemsInListView += InitializeQueueItemsInForm;
 						UpdateMonitorForm.OnConnectionStateChange += ConnectionStateChange;
-					}
-					catch (Exception ex)
-					{
-						MessageBox.Show(ex.Message);
 					}
 				}
 				else
@@ -57,10 +47,23 @@ namespace Monitor
 			}
 		}
 
+
+		private void btnDisconnect_Click(object sender, EventArgs e)
+		{
+			if (TcpPublisherClient.Instance != null && TcpPublisherClient.Instance.isConnected)
+			{
+				ClearListviews();
+				ConnectionStateChange(false);
+			}
+		}
+
+
 		private void InitializeQueueItemsInForm(List<QueueItem> queueItems)
 		{
 			try
 			{
+				ClearListviews();
+
 				for (int x = 0; x < queueItems.Count; x++)
 				{
 					ListViewItem lvi = new ListViewItem(queueItems[x].Data);
@@ -86,6 +89,7 @@ namespace Monitor
 			{
 				MessageBox.Show(ex.Message);
 			}
+			ResetAmountCount();
 			UpdateMonitorForm.OnQueueItemChanged += QueueItemStateChange;
 		}
 
@@ -120,10 +124,13 @@ namespace Monitor
 						this.listViewInProgress.Items.Insert(0, lvi);
 						break;
 				}
+
+				ResetAmountCount();
 			}
+
 			catch (Exception ex)
 			{
-				_client.Send(new ErrorMessageObject() { Data = "Error occured"});
+				TcpPublisherClient.Instance.SendAsync(new ErrorMessageObject() { Data = ex.Message});
 				MessageBox.Show(ex.Message);
 			}
 		}
@@ -137,9 +144,30 @@ namespace Monitor
 			}
 			else
 			{
+				HeartBeatClient.Instance.Disconnect();
+				TcpPublisherClient.Instance.Unsubscribe();
 				this.lblAlive.Text = "Disconnected";
 				this.lblAlive.ForeColor = Color.FromName("Red");
 			}
+		}
+
+		private void ClearListviews()
+		{
+			if (_listViewItems.Count > 0)
+			{
+				_listViewItems.Clear();
+				if (this.listViewWaiting.Items.Count > 0) this.listViewWaiting.Items.Clear();
+				if (this.listViewQueued.Items.Count > 0) this.listViewQueued.Items.Clear();
+				if (this.listViewInProgress.Items.Count > 0) this.listViewInProgress.Items.Clear();
+				ResetAmountCount();
+			}
+		}
+
+		private void ResetAmountCount()
+		{
+			this.lblWaitingAmount.Text = this.listViewWaiting.Items.Count.ToString();
+			this.lblQueuedAmount.Text = this.listViewQueued.Items.Count.ToString();
+			this.lblInProgressAmount.Text = this.listViewInProgress.Items.Count.ToString();
 		}
 	}
 }

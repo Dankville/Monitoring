@@ -1,12 +1,9 @@
 ﻿using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using TcpMonitoring.MessagingObjects;
 
@@ -15,11 +12,15 @@ namespace Monitor
 	public class HeartBeatClient
 	{
 		private static readonly HeartBeatClient _Instance = new HeartBeatClient();
-		public static HeartBeatClient Instance => _Instance; 
+		public static HeartBeatClient Instance => _Instance;
 
-		private HeartBeatClient(){}
+		public Socket heartBeatClient { get; private set; }
+		public bool Connected { get; private set; }
+
+		private HeartBeatClient()
+		{
+		}
 		
-		private Socket _heartBeatClient = null;
 		private int _missedHeartBeats = 0;
 		private Thread _heartBeatChecker;
 
@@ -27,8 +28,8 @@ namespace Monitor
 		{
 			if (IPAddress.TryParse(ipAddress, out var ipAdd))
 			{
-				_heartBeatClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
-				_heartBeatClient.BeginConnect(new IPEndPoint(ipAdd, port), new AsyncCallback(HeartBeatPublisherConnectCallback), null);
+				heartBeatClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
+				heartBeatClient.BeginConnect(new IPEndPoint(ipAdd, port), new AsyncCallback(HeartBeatPublisherConnectCallback), null);
 			}
 		}
 
@@ -42,14 +43,26 @@ namespace Monitor
 			}
 		}
 
+		public void UnSubscribe()
+		{
+			if (heartBeatClient != null && heartBeatClient.Connected)
+				heartBeatClient.BeginDisconnect(true, new AsyncCallback(HeartbeatPublisherDisconnectCallback), null);
+		}
+
+		private void HeartbeatPublisherDisconnectCallback(IAsyncResult ar)
+		{
+			if (ar.IsCompleted)
+				heartBeatClient.EndDisconnect(ar);
+		}
+
 		private void HeartBeatReceive()
 		{
-			if (_heartBeatClient != null)
+			if (heartBeatClient != null)
 			{
 				StateObject state = new StateObject();
-				state.workSocket = _heartBeatClient;
-
-				_heartBeatClient.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(HeartBeatReceiveCallback), state);
+				state.workSocket = heartBeatClient;
+				
+				heartBeatClient.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(HeartBeatReceiveCallback), state);	
 			}
 		}
 
@@ -80,8 +93,7 @@ namespace Monitor
 			}
 			catch (SocketException sockEx)
 			{
-				// try reconnect
-				MessageBox.Show("Heartbeat client socket error: " + sockEx.Message);
+				CheckSocketExceptionOnConnectedSocket(sockEx);
 			}
 			catch (Exception ex)
 			{
@@ -119,7 +131,7 @@ namespace Monitor
 
 						if (_missedHeartBeats >= 5)
 						{
-							CloseConnection();
+							Disconnect();
 							break;
 						}
 						_missedHeartBeats++;
@@ -134,12 +146,57 @@ namespace Monitor
 			return thread;
 		}
 
-		private void CloseConnection()
+		public void Disconnect()
 		{
-			UpdateMonitorForm.ConnectionStateChange(false);
+			if (heartBeatClient.Connected) {
+				_heartBeatChecker.Abort();
+				SendAsync(new UnsubscribeMessageObject() { Data = "Unsubscribe" });
+			}
+		}
 
-			_heartBeatChecker.Abort();
-			_heartBeatClient = null;
+		private void SendAsync(IMessage msg)
+		{
+			try
+			{
+				string msgJson = JsonConvert.SerializeObject(msg, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
+				byte[] msgBytes = Encoding.ASCII.GetBytes(msgJson);
+				switch (msg)
+				{
+					case UnsubscribeMessageObject U:
+						heartBeatClient.BeginSend(msgBytes, 0, msgBytes.Length, 0, new AsyncCallback(UnsubscribeMessageCallback), heartBeatClient);
+						break;
+					default:
+						break;
+				}
+			}
+			catch (SocketException sockEx)
+			{
+				CheckSocketExceptionOnConnectedSocket(sockEx);
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message);
+			}
+		}
+
+		private void UnsubscribeMessageCallback(IAsyncResult ar)
+		{
+			if (ar.IsCompleted)
+			{
+				heartBeatClient.Close(100);
+			}
+		}
+
+		private void CheckSocketExceptionOnConnectedSocket(SocketException ex)
+		{
+			if (heartBeatClient.Connected)
+			{
+				MessageBox.Show(ex.Message);
+			}
+			else
+			{
+				// try reconnect;
+			}
 		}
 	}
 }

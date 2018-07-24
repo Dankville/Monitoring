@@ -13,49 +13,57 @@ namespace TcpMonitorPublisher
 	{
 		public static Thread MockQueueItemsWorkers = new Thread(() =>
 		{
+			MockQueueItems.fillMockItems(120);
 			while (true)
 			{
-				int wait = new Random().Next(5);
-				Thread.Sleep(wait * 1000);
-
-				int indexItemToChange;
-				QueueItem itemToChange; 
-
-				do
+				try
 				{
-					indexItemToChange = new Random().Next(MockQueueItems.items.Count - 1);
-					itemToChange = MockQueueItems.items[indexItemToChange];
-				} while (itemToChange.QueueItemState == StateType.InProgress);
+					int wait = new Random().Next(5);
+					Thread.Sleep(wait * 1000);
 
-				
-				StateType oldState = itemToChange.QueueItemState;
-				StateType newState;
+					int indexItemToChange;
+					QueueItem itemToChange;
 
-				if (itemToChange.QueueItemState == StateType.Waiting)
-				{
-					newState = StateType.Queued;
+					do
+					{
+						indexItemToChange = new Random().Next(MockQueueItems.items.Count - 1);
+						itemToChange = MockQueueItems.items[indexItemToChange];
+					} while (itemToChange.QueueItemState == StateType.InProgress);
+
+
+					StateType oldState = itemToChange.QueueItemState;
+					StateType newState;
+
+					if (itemToChange.QueueItemState == StateType.Waiting)
+					{
+						newState = StateType.Queued;
+					}
+					else if (itemToChange.QueueItemState == StateType.Queued)
+					{
+						newState = StateType.InProgress;
+					}
+					else
+						break;
+
+					MockQueueItems.items[indexItemToChange] = new QueueItem(itemToChange.ID, itemToChange.Data, newState);
+					
+					string messageData = $"{itemToChange.Data} from state {oldState} => {newState}";
+					Console.WriteLine(messageData);
+
+					var changeMessage = new QueueItemStateChangeMessage(itemToChange.ID, oldState, newState, messageData);
+
+					if (Host.Instance.PublisherServer.clientState == PublisherClientState.Initializing)
+						Host.Instance.PublisherServer.itemsChangedInInitialization.Add(changeMessage);
+
+					if (Host.Instance.PublisherServer.clientSocket != null && Host.Instance.PublisherServer.clientSocket.Connected && Host.Instance.PublisherServer.clientState == PublisherClientState.Connected)
+						Host.Instance.PublisherServer.SendQueueItemStateChange(changeMessage);
 				}
-				else if (itemToChange.QueueItemState == StateType.Queued)
+				catch (Exception ex)
 				{
-					newState = StateType.InProgress;
+					Console.WriteLine(ex.Message);
+					Console.ReadLine();
 				}
-				else
-					break;
-
-				MockQueueItems.items[indexItemToChange] = new QueueItem()
-				{
-					ID = itemToChange.ID,
-					Data = itemToChange.Data,
-					QueueItemState = newState
-				};
-
-				string messageData = $"{itemToChange.Data} from state {oldState} => {newState}";
-				Console.WriteLine(messageData);
-
-			if (Host.Instance.PublisherServer.clientSocket.Connected)
-					Host.Instance.PublisherServer.SendQueueItemStateChange(new QueueItemStateChangeMessage(itemToChange.ID, oldState, newState, messageData));
 			}
-
 			Console.WriteLine("Worker is done, no more queue items in waiting or queued state.");
 			Console.ReadLine();
 		});

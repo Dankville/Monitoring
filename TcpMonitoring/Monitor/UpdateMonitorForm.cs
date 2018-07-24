@@ -22,7 +22,10 @@ namespace Monitor
 
 		public static void ConnectionStateChange(bool connected)
 		{
-			ThreadSafeConnectionStateChange(connected);
+			if (TcpPublisherClient.Instance.publisherTcpClient.Connected)
+			{
+				ThreadSafeConnectionStateChange(connected);
+			}
 		}
 
 		private static void ThreadSafeConnectionStateChange(bool connected)
@@ -33,7 +36,10 @@ namespace Monitor
 
 		public static void InitializeQueueListView(List<QueueItem> queueItems)
 		{
-			ThreadSafeInitializeListView(queueItems);
+			if (TcpPublisherClient.Instance.publisherTcpClient.Connected)
+			{
+				ThreadSafeInitializeListView(queueItems);
+			}
 		}
 
 		private static void ThreadSafeInitializeListView(List<QueueItem> queueItems)
@@ -44,7 +50,10 @@ namespace Monitor
 
 		public static void UpdateQueueListViewItem(Guid ItemID, StateType oldState, StateType newState)
 		{
-			ThreadSafeUpdateListView(ItemID, oldState, newState);
+			if (TcpPublisherClient.Instance.publisherTcpClient.Connected)
+			{
+				ThreadSafeUpdateListView(ItemID, oldState, newState);
+			}
 		}
 
 		private static void ThreadSafeUpdateListView(Guid itemID, StateType oldState, StateType newState)

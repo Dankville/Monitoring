@@ -41,11 +41,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MessagingObjects\ChangedItemsInInitializingMessage.cs" />
     <Compile Include="MessagingObjects\ErrorMessageObject.cs" />
     <Compile Include="MessagingObjects\HeartbeatObject.cs" />
     <Compile Include="IMonitoringPublisher.cs" />
     <Compile Include="MessagingObjects\IMessage.cs" />
-    <Compile Include="MessagingObjects\InitalizeMessage.cs" />
     <Compile Include="MessagingObjects\MessageObject.cs" />
     <Compile Include="MessagingObjects\MonitoringInitializationMessage.cs" />
     <Compile Include="MessagingObjects\QueueItemStateChangeMessage.cs" />

@@ -50,6 +50,7 @@ namespace TcpMonitorPublisher
 
 		private void WaitForHeartBeatConnection()
 		{
+			Console.WriteLine("Waiting for heartbeat client.");
 			Socket _heartBeatClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
 			_heartBeatPublisher.BeginAcceptSocket(new AsyncCallback(OnHeartBeatClientConnected), _heartBeatClient);
 		}
@@ -60,7 +61,8 @@ namespace TcpMonitorPublisher
 			{
 				Console.WriteLine("Heartbeat client connected");
 				_heartBeatClient = _heartBeatPublisher.EndAcceptSocket(ar);
-				_heartBeatTask = HeartBeatTask();
+				//_heartBeatTask = HeartBeatTask();
+				Receive();
 			}
 		}
 
@@ -84,7 +86,7 @@ namespace TcpMonitorPublisher
 			{
 				// reconnect
 
-				StopConnection();
+				Close();
 				return;
 			}
 			_missedHeartbeats++;
@@ -92,6 +94,7 @@ namespace TcpMonitorPublisher
 			IMessage hb = new HeartbeatObject() { Data = "Heart Beat" };
 			string msg = JsonConvert.SerializeObject(hb, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
 			byte[] heartbeatBytes = Encoding.ASCII.GetBytes(msg);
+
 			_heartBeatClient.BeginSend(heartbeatBytes, 0, heartbeatBytes.Length, 0, new AsyncCallback(HeartBeatCallback), null);
 		}
 
@@ -101,10 +104,71 @@ namespace TcpMonitorPublisher
 				_missedHeartbeats = 0;
 		}
 
-		private void StopConnection()
+		private void Receive()
 		{
-			// stop other connections.
-			_heartBeatTask.Abort();
+			try
+			{
+				StateObject state = new StateObject();
+				state.workSocket = _heartBeatClient;
+				_heartBeatClient.BeginReceive(state.buffer, 0, StateObject.BufferSize,0, new AsyncCallback(ReceiveCallback), state);
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine(ex.Message);
+			}
+		}
+
+		private void ReceiveCallback(IAsyncResult ar)
+		{
+			try
+			{
+				if (ar.IsCompleted && _heartBeatClient.Connected)
+				{
+					StateObject state = (StateObject)ar.AsyncState;
+					Socket client = state.workSocket;
+					int bytesRead = client.EndReceive(ar);
+					state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
+					string msg = state.sb.ToString();
+
+					HandleReceivedMessage(msg);
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine(ex.Message);
+			}
+		}
+
+		private void HandleReceivedMessage(string jsonMsg)
+		{
+			try
+			{
+				IMessage message = JsonConvert.DeserializeObject<IMessage>(jsonMsg, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
+
+				switch (message)
+				{
+					case UnsubscribeMessageObject U:
+						HandleUnsubscribeMessage();
+						break;
+					default:
+						break;
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine(ex.Message);
+			}
+		}
+
+		private void HandleUnsubscribeMessage()
+		{
+			Close();
+		}
+
+		public void Close()
+		{
+			Console.WriteLine("Heartbeat client disconnected \n");
+			WaitForHeartBeatConnection();
 		}
 	}
 }

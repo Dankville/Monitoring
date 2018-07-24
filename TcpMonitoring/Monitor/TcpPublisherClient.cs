@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using TcpMonitoring.MessagingObjects;
 using TcpMonitoring.QueueingItems;
 using System.Windows.Forms;
+using System.IO;
 
 namespace Monitor
 {
@@ -29,9 +30,9 @@ namespace Monitor
 
 	public class TcpPublisherClient
 	{
-		public Socket _publisherTcpClient;
-		public int _MissedHeartBeats = 0;
-		public bool IsConnected = false;
+		public Socket publisherTcpClient { get; private set; }
+		public int missedHeartBeats = 0;
+		public bool isConnected = false;
 		
 		private string _lastReceivedMessage;
 
@@ -39,43 +40,78 @@ namespace Monitor
 		private static readonly TcpPublisherClient _Instance = new TcpPublisherClient();
 		public static TcpPublisherClient Instance => _Instance;
 
-		private TcpPublisherClient(){ }
-
-		public void BeginConnect(IPAddress ipAddress, int port)
+		private TcpPublisherClient()
 		{
-			if (!IsConnected)
+		}
+
+		public bool BeginConnect(IPAddress ipAddress, int port)
+		{
+
+			if (!isConnected)
 			{
-				_publisherTcpClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
-				_publisherTcpClient.BeginConnect(ipAddress, port, new AsyncCallback(ConnectCallback), null);
+				publisherTcpClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
+				publisherTcpClient.BeginConnect(ipAddress, port, new AsyncCallback(ConnectCallback), null);
+				return true;
 			}
+			return false;
 		}
 
 		private void ConnectCallback(IAsyncResult result)
 		{
 			try
 			{
-				_publisherTcpClient.EndConnect(result);
+				publisherTcpClient.EndConnect(result);
 
 				if (result.IsCompleted)
 				{
-					IsConnected = true;
+					isConnected = true;
 					Receive();
 				}
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
-				MessageBox.Show("Could not make a connection to the machine with those credentials.");
+				MessageBox.Show(ex.Message);
+				//MessageBox.Show("Could not make a connection to the machine with those credentials.");
 			}
 		}
 
 		public void Unsubscribe()
 		{
-			StateObject state = new StateObject();
-			state.workSocket = _publisherTcpClient;
-			_publisherTcpClient.BeginDisconnect(false, UnSubscribeCallback, state);
+			if (publisherTcpClient.Connected)
+			{
+				StateObject state = new StateObject();
+				state.workSocket = publisherTcpClient;
+				SendAsync(new UnsubscribeMessageObject() { Data = "unsub" });
+
+				publisherTcpClient.BeginDisconnect(true, new AsyncCallback(UnSubscribeCallback), state);
+			}
 		}
 
-		public void Send(IMessage message)
+		private void UnSubscribeCallback(IAsyncResult result)
+		{
+			try
+			{
+				if (result.IsCompleted)
+				{
+					isConnected = false;
+					publisherTcpClient.EndDisconnect(result);
+				}
+				else
+				{
+					throw new Exception();
+				}
+			}
+			catch (SocketException sockEx)
+			{
+				CheckSocketExceptionOnConnectedSocket(sockEx);
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message);
+			}
+		}
+
+		public void SendAsync(IMessage message)
 		{
 			try
 			{
@@ -84,20 +120,24 @@ namespace Monitor
 				switch (message)
 				{
 					case UnsubscribeMessageObject U:
-						_publisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(UnSubscribeCallback), _publisherTcpClient);
+						publisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(UnSubscribeCallback), publisherTcpClient);
 						break;
 					case ErrorMessageObject E:
-						_publisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(ErrorMessageCallback), _publisherTcpClient);
+						publisherTcpClient.BeginSend(byteData, 0, byteData.Length, 0, new AsyncCallback(ErrorMessageCallback), publisherTcpClient);
 						break;
 					default:
 						break;
 				}
 
 			}
+			catch (SocketException sockEx)
+			{
+				CheckSocketExceptionOnConnectedSocket(sockEx);
+			}
 			catch (Exception ex)
 			{
 				// show exception in monitoring form
-				Console.WriteLine(ex.Message);
+				MessageBox.Show(ex.Message);
 			}
 		}
 
@@ -113,27 +153,13 @@ namespace Monitor
 			}
 		}
 
-		private void UnSubscribeCallback(IAsyncResult result)
-		{
-			if (result.IsCompleted)
-			{
-				IsConnected = false;
-				_publisherTcpClient = null;
-			}
-			else
-			{
-				throw new Exception();
-			}
-		}
-
 		private void InitializeCallback(IAsyncResult result)
 		{
 			if (result.IsCompleted)
 			{
 				Socket client = (Socket)result.AsyncState;
 				int bytesRead = client.EndSend(result);
-
-
+				
 			}
 			else
 			{
@@ -147,14 +173,17 @@ namespace Monitor
 			try
 			{
 				StateObject state = new StateObject();
-				state.workSocket = _publisherTcpClient;
+				state.workSocket = publisherTcpClient;
 
-				_publisherTcpClient.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
+				publisherTcpClient.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
 			}
-			catch (SocketException ex)
+			catch (SocketException sockEx)
 			{
-				// Publisher was closed.
-				Console.WriteLine(ex.Message);
+				CheckSocketExceptionOnConnectedSocket(sockEx);
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message);
 			}
 		}
 
@@ -170,10 +199,10 @@ namespace Monitor
 
 					state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
 					_lastReceivedMessage += state.sb.ToString();
-					// Check if last part of send message.
-					if (_lastReceivedMessage.IndexOf("<EOF>") != -1)
+					// Check if last part of sent message.
+					if (_lastReceivedMessage.IndexOf("<EOM>") != -1)
 					{
-						HandleMessage(_lastReceivedMessage);
+						HandleReceivedMessage(_lastReceivedMessage);
 					}
 
 					Receive();
@@ -185,8 +214,7 @@ namespace Monitor
 			}
 			catch (SocketException sockEx)
 			{
-				// try reconnect
-				MessageBox.Show("MonitorClient error: " + sockEx.Message);
+				CheckSocketExceptionOnConnectedSocket(sockEx);
 			}
 			catch (Exception ex)
 			{
@@ -194,36 +222,60 @@ namespace Monitor
 			}
 		}
 
-		private void HandleMessage(string jsonMessage)
+		private void HandleReceivedMessage(string jsonMessage)
 		{
 			_lastReceivedMessage = "";
 			try
 			{
-				jsonMessage = jsonMessage.Remove(jsonMessage.Length - 5);
-				IMessage message = JsonConvert.DeserializeObject<IMessage>(jsonMessage, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All });
-
-				switch (message)
+				List<string> messages = new List<string>();
+				while (true)
 				{
-					case ErrorMessageObject E:
-						HandleErrorMessage(E);
+					if (String.IsNullOrEmpty(jsonMessage))
 						break;
-					case MonitoringInitializationMessage I:
-						HandleInitializationMessage(I);
-						break;
-					case QueueItemStateChangeMessage Q:
-						HandleQueueItemStateChangeMessage(Q);
-						break;
-					case List<QueueItemStateChangeMessage> LQ:
 
+					int EOFIndex = jsonMessage.IndexOf("<EOM>");
+					if (EOFIndex == -1)
 						break;
-					default:
-						break;
+
+					messages.Add(jsonMessage.Substring(0, EOFIndex));
+					jsonMessage = jsonMessage.Remove(0, EOFIndex + 5);
+				}
+				
+				foreach (string msg in messages)
+				{
+					IMessage iMsgObj = JsonConvert.DeserializeObject<IMessage>(msg, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, });
+					switch (iMsgObj)
+					{
+						case ErrorMessageObject E:
+							HandleErrorMessage(E);
+							break;
+						case MonitoringInitializationMessage I:
+							HandleInitializationMessage(I);
+							break;
+						case QueueItemStateChangeMessage Q:
+							HandleQueueItemStateChangeMessage(Q);
+							break;
+						case ChangedItemsInInitializingMessage C:
+							HandleChangeItemsWhileInitializingMessage(C);
+							break;
+						default:
+							break;
+					}
 				}
 			}
 			catch (Exception ex)
 			{
 				// show exception in monitoring form
 				MessageBox.Show(ex.Message);
+
+			}
+		}
+
+		private void HandleChangeItemsWhileInitializingMessage(ChangedItemsInInitializingMessage c)
+		{
+			foreach (var item in c.items)
+			{
+				UpdateMonitorForm.UpdateQueueListViewItem(item.QueueItemId, item.OldState, item.NewState);
 			}
 		}
 
@@ -237,38 +289,35 @@ namespace Monitor
 			try
 			{
 				HeartBeatClient.Instance.BeginConnect(i.HeartbeatPublisherIpAdress, i.HeartbeatPublisherPort);
+				UpdateMonitorForm.InitializeQueueListView(i.QueueItems);
 			}
-			catch (Exception)
+			catch (Exception ex)
 			{
 				// TODO heartbeat initialization exception.
+				MessageBox.Show(ex.Message);
 			}
-			UpdateMonitorForm.InitializeQueueListView(i.QueueItems);
 		}
 
 		private void HandleErrorMessage(ErrorMessageObject error)
 		{
-			Console.WriteLine(error.Data);
-		}
-
-		private Thread NewReceiveLoop()
-		{
-			return new Thread(() =>
-			{
-				try
-				{
-					Receive();
-				}
-				catch (Exception ex)
-				{
-					// show exception in monitoring form
-					Console.WriteLine(ex.Message);
-				}
-			});
+			MessageBox.Show(error.Data);
 		}
 
 		public void Close()
 		{
-			_publisherTcpClient.Close();
+			publisherTcpClient.Close();
+		}
+		
+		private void CheckSocketExceptionOnConnectedSocket(SocketException ex)
+		{
+			if (publisherTcpClient.Connected)
+			{
+				MessageBox.Show(ex.Message);
+			}
+			else
+			{
+				// try reconnect;
+			}
 		}
 	}
 }

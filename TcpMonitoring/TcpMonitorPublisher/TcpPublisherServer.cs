@@ -26,16 +26,27 @@ namespace TcpMonitorPublisher
 		public byte[] buffer = new byte[BufferSize];
 		// Received data string.
 		public StringBuilder sb = new StringBuilder();
+
+		public Type MessageType = null;
+	}
+
+	public enum PublisherClientState
+	{
+		Disconnected = 0,
+		Initializing = 1,
+		Connected = 2
 	}
 
 	public class TcpPublisherServer
 	{
 		private static readonly TcpPublisherServer _Instance = new TcpPublisherServer();
-
 		
-		private TcpListener _MonitorServer;
+		private TcpListener _monitorServer;
 		public Socket clientSocket = null;
-		
+		public PublisherClientState clientState = PublisherClientState.Disconnected;
+
+		public List<QueueItemStateChangeMessage> itemsChangedInInitialization = new List<QueueItemStateChangeMessage>();
+
 		private TcpPublisherServer() { }
 
 		public static TcpPublisherServer Instance => _Instance;
@@ -45,8 +56,8 @@ namespace TcpMonitorPublisher
 			try
 			{
 				IPEndPoint endpoint = new IPEndPoint(IPAddress.Parse(ipStr), port);
-				_MonitorServer = new TcpListener(endpoint);
-				_MonitorServer.Start();
+				_monitorServer = new TcpListener(endpoint);
+				_monitorServer.Start();
 				Console.WriteLine("Publisher Server running and waiting for clients.");
 				WaitForClients();
 			}
@@ -62,7 +73,7 @@ namespace TcpMonitorPublisher
 		{
 			//_IncomingConnectionDone.WaitOne();
 			Socket monitorClient = new Socket(SocketType.Stream, ProtocolType.Tcp);
-			_MonitorServer.BeginAcceptSocket(new AsyncCallback(OnClientConnected), monitorClient);
+			_monitorServer.BeginAcceptSocket(new AsyncCallback(OnClientConnected), monitorClient);
 		}
 
 		public void OnClientConnected(IAsyncResult result)
@@ -70,8 +81,8 @@ namespace TcpMonitorPublisher
 			//_IncomingConnectionDone.Set();
 			if (result.IsCompleted)
 			{
-				Console.WriteLine("Client Connected.");
-				clientSocket = _MonitorServer.EndAcceptSocket(result);
+				Console.WriteLine("Client Subscribed.");
+				clientSocket = _monitorServer.EndAcceptSocket(result);
 				WaitForClients();
 				Receive();
 				InitializeClient();
@@ -91,25 +102,79 @@ namespace TcpMonitorPublisher
 
 			string queueItemsJson = SerializeObjectMessage(queueItems);
 
-			SendAsync(queueItemsJson);
+			SendAsync(queueItems, queueItems.GetType());
 		}
 
 		// Sending calls
 
-		private void SendAsync(string data)
+		private void SendAsync(IMessage data, Type messageType = null)
 		{
 			if (clientSocket != null)
 			{
-				data += "<EOF>";
-				byte[] byteArr = Encoding.ASCII.GetBytes(data);
-				clientSocket.BeginSend(byteArr, 0, byteArr.Length, 0, new AsyncCallback(SendCallback), clientSocket);
+				string msgJson = SerializeObjectMessage(data);
+
+				msgJson += "<EOM>";
+				byte[] byteArr = Encoding.ASCII.GetBytes(msgJson);
+				StateObject state = new StateObject();
+				state.workSocket = clientSocket;
+				state.MessageType = messageType;
+
+				switch (data)
+				{
+					
+					case HeartbeatObject H:
+					case MessageObject M:
+					case QueueItemStateChangeMessage Q:
+					case UnsubscribeMessageObject U:
+					case ChangedItemsInInitializingMessage C:
+						clientSocket.BeginSend(byteArr, 0, byteArr.Length, 0, new AsyncCallback(SendCallback), state);
+						break;
+					case MonitoringInitializationMessage M:
+						clientSocket.BeginSend(byteArr, 0, byteArr.Length, 0, new AsyncCallback(InitializationCallback), state);
+						break;
+					default:
+						break;
+				}
 			}
 			else
 			{
 				throw new Exception();
 			}
 		}
-		
+
+		private void InitializationCallback(IAsyncResult result)
+		{
+			if (result.IsCompleted)
+			{
+				//Socket client = (Socket)result.AsyncState;
+				StateObject state = (StateObject)result.AsyncState;
+				int bytesSent = state.workSocket.EndSend(result);
+
+				SendAsync(new ChangedItemsInInitializingMessage() { items = itemsChangedInInitialization });
+
+				clientState = PublisherClientState.Connected;
+			}
+			else
+			{
+				throw new Exception();
+			}
+		}
+
+		private void SendCallback(IAsyncResult result)
+		{
+			if (result.IsCompleted)
+			{
+				//Socket client = (Socket)result.AsyncState;
+				StateObject state = (StateObject)result.AsyncState;
+
+				int bytesSent = state.workSocket.EndSend(result);
+			}
+			else
+			{
+				throw new Exception();
+			}
+		}
+
 		private void Send(string data)
 		{
 			if (clientSocket != null)
@@ -123,51 +188,36 @@ namespace TcpMonitorPublisher
 			}
 		}
 
-		private void SendCallback(IAsyncResult result)
-		{
-			if (result.IsCompleted)
-			{
-				Socket client = (Socket)result.AsyncState;
-				int bytesSent = client.EndSend(result);
-			}
-			else
-			{
-				throw new Exception();
-			}
-		}
-
 		// Receiving calls.
 		private void Receive()
 		{
-			if (clientSocket != null)
-			{ 
-				StateObject state = new StateObject();
-				state.workSocket = clientSocket;
-
-				clientSocket.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
-			}
-			else
+			try
 			{
-				throw new Exception();
+				if (clientSocket != null)
+				{
+					StateObject state = new StateObject();
+					state.workSocket = clientSocket;
+
+					clientSocket.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine(ex.Message);
 			}
 		}
 
-		public void ReceiveCallback(IAsyncResult result)
+		private void ReceiveCallback(IAsyncResult result)
 		{
-			if (result.IsCompleted)
+			if (clientSocket.Connected && result.IsCompleted)
 			{
+
 				StateObject state = (StateObject)result.AsyncState;
 				Socket handler = state.workSocket;
-
-				if (handler.Connected)
-				{
-					int bytesRead = handler.EndReceive(result);
-
-					state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
-					string msg = state.sb.ToString();
-					HandleMessage(msg);
-					Receive();
-				}
+				int bytesRead = handler.EndReceive(result);
+				state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
+				string msg = state.sb.ToString();
+				HandleReceivedMessage(msg);
 			}
 			else
 			{
@@ -177,7 +227,7 @@ namespace TcpMonitorPublisher
 
 		// Received Message Handling
 
-		private void HandleMessage(string jsonMsg)
+		private void HandleReceivedMessage(string jsonMsg)
 		{
 			try
 			{
@@ -209,7 +259,7 @@ namespace TcpMonitorPublisher
 
 		private void HandleUnsubscribeMessage(IMessage msg)
 		{
-			Console.WriteLine("\nunsubscribed");
+			Console.WriteLine("client unsubscribed");
 			Close();
 		}
 
@@ -219,21 +269,11 @@ namespace TcpMonitorPublisher
 			return JsonConvert.SerializeObject(obj, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
 		}
 
-		public void SendErrorMessage(IMessage errorMessage)
-		{
-			SendAsync(SerializeMonitorMessage(errorMessage));
-		}
-
-		public void SendObject(IMessage message)
-		{
-			SendAsync(SerializeObjectMessage(message));
-		}
-
 		public void SendQueueItemStateChange(IMessage message)
 		{
 			try
 			{
-				SendAsync(SerializeObjectMessage(message));
+				SendAsync(message);
 			}
 			catch (Exception ex)
 			{
@@ -248,8 +288,8 @@ namespace TcpMonitorPublisher
 
 		public void Close()
 		{
+			clientState = PublisherClientState.Disconnected;
 			clientSocket.Close();
-			clientSocket = null;
 		}
 	}
 }

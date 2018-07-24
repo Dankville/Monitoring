@@ -18,7 +18,6 @@ namespace TcpMonitorPublisher
 			Host host = Host.Instance;
 
 			Console.WriteLine("Press [enter] to start mock items worker");
-			Console.ReadLine();
 			host.StartMockItemsWorker();
 		}
 	}
