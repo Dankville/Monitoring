@@ -16,8 +16,7 @@ namespace TcpMonitoring.MessagingObjects
 			HeartbeatPublisherIpAdress = heartbeatPublisherIp;
 			HeartbeatPublisherPort = heartbeatPublisherPort;
 		}
-
-		public string Data { get; set; }
+		
 		public string HeartbeatPublisherIpAdress { get; set; }
 		public int HeartbeatPublisherPort { get; set; }
 

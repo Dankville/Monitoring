@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,25 +13,22 @@ namespace TcpMonitorPublisher
 {
 	public class MockQueueItems
 	{
+		public static Dictionary<int, QueueItem> items = new Dictionary<int, QueueItem>();
+		public static ConcurrentQueue<QueueItem> itemsQueue = new ConcurrentQueue<QueueItem>();
+
 		public static void fillMockItems(int amountMockItems)
 		{
 			for (int x = 0; x < amountMockItems; x++)
 			{
-				StateType[] types = new StateType[] { StateType.Waiting, StateType.Queued, StateType.InProgress };
-
 				StateType type;
 
-				if (x < amountMockItems / 3)
+				if (x < amountMockItems / 2)
 					type = StateType.Waiting;
-				else if (x < (2 / 3) * amountMockItems)
+				else 
 					type = StateType.Queued;
-				else
-					type = StateType.InProgress;
 
-				items.Add(new QueueItem(Guid.NewGuid(), $"QueueItem{x}", type));
+				items.Add(x, new QueueItem(Guid.NewGuid(), $"QueueItem{x}", type));
 			}
 		}
-
-		public static List<QueueItem> items = new List<QueueItem>();
 	}
 }

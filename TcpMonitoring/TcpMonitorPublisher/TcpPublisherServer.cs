@@ -13,6 +13,7 @@ using System.Reflection;
 using TcpMonitoring;
 using TcpMonitoring.MessagingObjects;
 using TcpMonitoring.QueueingItems;
+using System.Collections.Concurrent;
 
 namespace TcpMonitorPublisher
 {
@@ -40,12 +41,13 @@ namespace TcpMonitorPublisher
 	public class TcpPublisherServer
 	{
 		private static readonly TcpPublisherServer _Instance = new TcpPublisherServer();
-		
+		private object _sendLock = new object();
+
 		private TcpListener _monitorServer;
 		public Socket clientSocket = null;
 		public PublisherClientState clientState = PublisherClientState.Disconnected;
 
-		public List<QueueItemStateChangeMessage> itemsChangedInInitialization = new List<QueueItemStateChangeMessage>();
+		public ConcurrentBag<QueueItemStateChangeMessage> itemsChangedInInitialization = new ConcurrentBag<QueueItemStateChangeMessage>();
 
 		private TcpPublisherServer() { }
 
@@ -95,14 +97,12 @@ namespace TcpMonitorPublisher
 
 		private void InitializeClient()
 		{
-			Console.WriteLine("Initializing");
-			MonitoringInitializationMessage queueItems = new MonitoringInitializationMessage(MockQueueItems.items, HeartBeatPublisher.ipAddress.ToString(), HeartBeatPublisher.Port);
-			queueItems.Data = "All current queue items";
-			queueItems.QueueItems = MockQueueItems.items;
+			MonitoringInitializationMessage queueItems = new MonitoringInitializationMessage(MockQueueItems.items.Values.ToList(), HeartBeatPublisher.ipAddress.ToString(), HeartBeatPublisher.Port);
+			clientState = PublisherClientState.Initializing;
 
-			string queueItemsJson = SerializeObjectMessage(queueItems);
 
-			SendAsync(queueItems, queueItems.GetType());
+			// make use of concurrent bag
+			SendAsync(queueItems);	
 		}
 
 		// Sending calls
@@ -111,13 +111,12 @@ namespace TcpMonitorPublisher
 		{
 			if (clientSocket != null)
 			{
-				string msgJson = SerializeObjectMessage(data);
+				string msgJson = SerializeMonitorMessage(data);
 
 				msgJson += "<EOM>";
 				byte[] byteArr = Encoding.ASCII.GetBytes(msgJson);
 				StateObject state = new StateObject();
 				state.workSocket = clientSocket;
-				state.MessageType = messageType;
 
 				switch (data)
 				{
@@ -126,10 +125,10 @@ namespace TcpMonitorPublisher
 					case MessageObject M:
 					case QueueItemStateChangeMessage Q:
 					case UnsubscribeMessageObject U:
-					case ChangedItemsInInitializingMessage C:
+					case ChangedItemsWhileInitializingMessage C:
 						clientSocket.BeginSend(byteArr, 0, byteArr.Length, 0, new AsyncCallback(SendCallback), state);
 						break;
-					case MonitoringInitializationMessage M:
+					case MonitoringInitializationMessage M:	
 						clientSocket.BeginSend(byteArr, 0, byteArr.Length, 0, new AsyncCallback(InitializationCallback), state);
 						break;
 					default:
@@ -150,7 +149,11 @@ namespace TcpMonitorPublisher
 				StateObject state = (StateObject)result.AsyncState;
 				int bytesSent = state.workSocket.EndSend(result);
 
-				SendAsync(new ChangedItemsInInitializingMessage() { items = itemsChangedInInitialization });
+				if (itemsChangedInInitialization.Count > 0)
+				{
+					List<QueueItemStateChangeMessage> messagesList = itemsChangedInInitialization.ToList();
+					SendAsync(new ChangedItemsWhileInitializingMessage() { items = messagesList });
+				}
 
 				clientState = PublisherClientState.Connected;
 			}
@@ -175,17 +178,9 @@ namespace TcpMonitorPublisher
 			}
 		}
 
-		private void Send(string data)
+		private void SendChangedItemsInInitialization(ChangedItemsWhileInitializingMessage c)
 		{
-			if (clientSocket != null)
-			{
-				byte[] dataBytes = Encoding.ASCII.GetBytes(data);
-				clientSocket.Send(dataBytes);
-			}
-			else
-			{
-				throw new Exception();
-			}
+
 		}
 
 		// Receiving calls.
@@ -254,7 +249,7 @@ namespace TcpMonitorPublisher
 		private void HandleErrorMessage(ErrorMessageObject e)
 		{
 			WorkerThreads.MockQueueItemsWorkers.Abort();
-			Console.WriteLine("Worker thread stopped because: " + e.Data);
+			Console.WriteLine("Worker thread stopped because: " + e.ErrorMessage);
 		}
 
 		private void HandleUnsubscribeMessage(IMessage msg)
@@ -262,13 +257,7 @@ namespace TcpMonitorPublisher
 			Console.WriteLine("client unsubscribed");
 			Close();
 		}
-
-		// Helper methods
-		private string SerializeObjectMessage(IMessage obj)
-		{
-			return JsonConvert.SerializeObject(obj, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
-		}
-
+		
 		public void SendQueueItemStateChange(IMessage message)
 		{
 			try

@@ -8,6 +8,6 @@ namespace TcpMonitoring.MessagingObjects
 {
     public class ErrorMessageObject : IMessage
     {
-        public string Data { get; set; }
+        public string ErrorMessage { get; set; }
     }
 }

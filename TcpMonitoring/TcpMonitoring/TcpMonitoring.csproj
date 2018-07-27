@@ -31,20 +31,70 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Avit.XIMEx.API.SDK, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\SecurityAPIClient.1.0.0-ci-20180719-142143\lib\Avit.XIMEx.API.SDK.dll</HintPath>
+    </Reference>
+    <Reference Include="Avit.XIMEx.APIClients.Discovery, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\DiscoveryAPIClient.1.0.0-ci-20180719-142752\lib\Avit.XIMEx.APIClients.Discovery.dll</HintPath>
+    </Reference>
+    <Reference Include="Avit.XIMEx.APIClients.SecurityManagement, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\SecurityAPIClient.1.0.0-ci-20180719-142143\lib\Avit.XIMEx.APIClients.SecurityManagement.dll</HintPath>
+    </Reference>
+    <Reference Include="Avit.XIMEx.Discovery.SDK, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\DiscoveryAPIClient.1.0.0-ci-20180719-142752\lib\Avit.XIMEx.Discovery.SDK.dll</HintPath>
+    </Reference>
+    <Reference Include="Avit.XIMEx.SDK.Core.Entities, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\SecurityAPIClient.1.0.0-ci-20180719-142143\lib\Avit.XIMEx.SDK.Core.Entities.dll</HintPath>
+    </Reference>
+    <Reference Include="Avit.XIMEx.SDK.Core.EntityActions, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\SecurityAPIClient.1.0.0-ci-20180719-142143\lib\Avit.XIMEx.SDK.Core.EntityActions.dll</HintPath>
+    </Reference>
+    <Reference Include="Avit.XIMEx.SDK.Core.EntityFilters, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\SecurityAPIClient.1.0.0-ci-20180719-142143\lib\Avit.XIMEx.SDK.Core.EntityFilters.dll</HintPath>
+    </Reference>
+    <Reference Include="Avit.XIMEx.SDK.Core.EntityProperties, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\SecurityAPIClient.1.0.0-ci-20180719-142143\lib\Avit.XIMEx.SDK.Core.EntityProperties.dll</HintPath>
+    </Reference>
+    <Reference Include="Avit.XIMEx.SDK.Core.EntitySchemas, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\SecurityAPIClient.1.0.0-ci-20180719-142143\lib\Avit.XIMEx.SDK.Core.EntitySchemas.dll</HintPath>
+    </Reference>
+    <Reference Include="Avit.XIMEx.SecurityManagement.SDK, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\SecurityAPIClient.1.0.0-ci-20180719-142143\lib\Avit.XIMEx.SecurityManagement.SDK.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.10.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Net" />
+    <Reference Include="System.Net.Http, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Net.Http.2.0.20126.16343\lib\net40\System.Net.Http.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Net.Http.Extensions, Version=2.2.29.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Net.Http.Formatting.Extension.5.2.3.0\lib\System.Net.Http.Extensions.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Net.Http.Formatting, Version=5.2.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Net.Http.Formatting.Extension.5.2.3.0\lib\System.Net.Http.Formatting.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Net.Http.Primitives, Version=4.2.29.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Net.Http.Formatting.Extension.5.2.3.0\lib\System.Net.Http.Primitives.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Net.Http.WebRequest, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Net.Http.2.0.20126.16343\lib\net40\System.Net.Http.WebRequest.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MessagingObjects\ChangedItemsInInitializingMessage.cs" />
     <Compile Include="MessagingObjects\ErrorMessageObject.cs" />
     <Compile Include="MessagingObjects\HeartbeatObject.cs" />
-    <Compile Include="IMonitoringPublisher.cs" />
     <Compile Include="MessagingObjects\IMessage.cs" />
     <Compile Include="MessagingObjects\MessageObject.cs" />
     <Compile Include="MessagingObjects\MonitoringInitializationMessage.cs" />
@@ -54,6 +104,12 @@
     <Compile Include="MessagingObjects\UnsubscribeMessageObject.cs" />
     <Compile Include="QueueingItems\QueueItem.cs" />
     <Compile Include="QueueingItems\StateType.cs" />
+    <Compile Include="XIMExAPIClients\MonitorApiClients.cs" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

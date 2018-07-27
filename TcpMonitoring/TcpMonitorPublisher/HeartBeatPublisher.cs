@@ -61,7 +61,7 @@ namespace TcpMonitorPublisher
 			{
 				Console.WriteLine("Heartbeat client connected");
 				_heartBeatClient = _heartBeatPublisher.EndAcceptSocket(ar);
-				//_heartBeatTask = HeartBeatTask();
+				_heartBeatTask = HeartBeatTask();
 				Receive();
 			}
 		}
@@ -73,7 +73,7 @@ namespace TcpMonitorPublisher
 				while (true)
 				{
 					SendHeartBeat();
-					Thread.Sleep(5000);
+					Thread.Sleep(1000);
 				}
 			});
 			thread.Start();
@@ -91,7 +91,7 @@ namespace TcpMonitorPublisher
 			}
 			_missedHeartbeats++;
 
-			IMessage hb = new HeartbeatObject() { Data = "Heart Beat" };
+			IMessage hb = new HeartbeatObject() { HeartbeatData = "Heart Beat" };
 			string msg = JsonConvert.SerializeObject(hb, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, Formatting = Formatting.Indented });
 			byte[] heartbeatBytes = Encoding.ASCII.GetBytes(msg);
 
@@ -168,6 +168,8 @@ namespace TcpMonitorPublisher
 		public void Close()
 		{
 			Console.WriteLine("Heartbeat client disconnected \n");
+			_heartBeatTask.Abort();
+			_heartBeatClient.Close();
 			WaitForHeartBeatConnection();
 		}
 	}

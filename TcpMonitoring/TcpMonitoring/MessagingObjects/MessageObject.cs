@@ -8,6 +8,5 @@ namespace TcpMonitoring.MessagingObjects
 {
     public class MessageObject : IMessage
     {
-        public string Data { get; set; }
     }
 }

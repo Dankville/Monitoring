@@ -4,13 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using TcpMonitoring.MessagingObjects;
 using TcpMonitoring.QueueingItems;
 
 namespace Monitor
 {
 	public delegate void ConnectionEventHandler(bool connected);
 	public delegate void InitializingQueueItemsEventHandler(List<QueueItem> queueItems);
-	public delegate void QueueItemStateChangedEventHandler(Guid itemId, StateType oldState, StateType newState);
+
+	public delegate void QueueItemStateChangedEventHandler(Guid itemID, StateType oldState, StateType newState);
 
 	public static class UpdateMonitorForm
 	{
@@ -20,18 +22,21 @@ namespace Monitor
 		public static event InitializingQueueItemsEventHandler OnInitializingQueueItemsInListView;
 		public static event QueueItemStateChangedEventHandler OnQueueItemChanged;
 
+		private static object _formUpdateLock = new object();
+
 		public static void ConnectionStateChange(bool connected)
 		{
-			if (TcpPublisherClient.Instance.publisherTcpClient.Connected)
-			{
-				ThreadSafeConnectionStateChange(connected);
-			}
+			ThreadSafeConnectionStateChange(connected);
 		}
 
 		private static void ThreadSafeConnectionStateChange(bool connected)
 		{
-			if (MonitorForm != null && MonitorForm.InvokeRequired) MonitorForm.Invoke(new ConnectionEventHandler(ThreadSafeConnectionStateChange), new object[] { connected });
-			else OnConnectionStateChange(connected);
+			if (MonitorForm != null && MonitorForm.InvokeRequired)
+			{
+				lock (_formUpdateLock)
+					MonitorForm.Invoke(new ConnectionEventHandler(ThreadSafeConnectionStateChange), new object[] { connected });
+			}
+			else OnConnectionStateChange?.Invoke(connected);
 		}
 
 		public static void InitializeQueueListView(List<QueueItem> queueItems)
@@ -44,22 +49,26 @@ namespace Monitor
 
 		private static void ThreadSafeInitializeListView(List<QueueItem> queueItems)
 		{
-			if (MonitorForm != null && MonitorForm.InvokeRequired) MonitorForm.Invoke(new InitializingQueueItemsEventHandler(ThreadSafeInitializeListView), new object[] { queueItems });
-			else OnInitializingQueueItemsInListView(queueItems);
+			if (MonitorForm != null && MonitorForm.InvokeRequired)
+				lock (_formUpdateLock)
+					MonitorForm.Invoke(new InitializingQueueItemsEventHandler(ThreadSafeInitializeListView), new object[] { queueItems });
+			else OnInitializingQueueItemsInListView?.Invoke(queueItems);
 		}
 
-		public static void UpdateQueueListViewItem(Guid ItemID, StateType oldState, StateType newState)
+		public static void UpdateQueueListViewItem(Guid itemID, StateType oldState, StateType newState)
 		{
 			if (TcpPublisherClient.Instance.publisherTcpClient.Connected)
-			{
-				ThreadSafeUpdateListView(ItemID, oldState, newState);
-			}
+				ThreadSafeUpdateListView(itemID, oldState, newState);
 		}
 
 		private static void ThreadSafeUpdateListView(Guid itemID, StateType oldState, StateType newState)
 		{
-			if (MonitorForm != null && MonitorForm.InvokeRequired) MonitorForm.Invoke(new QueueItemStateChangedEventHandler(ThreadSafeUpdateListView), new object[] { itemID, oldState, newState });
-			else OnQueueItemChanged(itemID, oldState, newState);
+			if (MonitorForm != null && MonitorForm.InvokeRequired)
+			{
+				lock (_formUpdateLock)
+					MonitorForm.Invoke(new QueueItemStateChangedEventHandler(ThreadSafeUpdateListView), new object[] { itemID, oldState, newState });
+			}
+			else OnQueueItemChanged?.Invoke(itemID, oldState, newState);
 		}
 
 	}

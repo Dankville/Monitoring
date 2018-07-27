@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -6,17 +7,22 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
 using TcpMonitoring.MessagingObjects;
 using TcpMonitoring.QueueingItems;
+using TcpMonitoring.XIMExAPIClients;
 
 namespace Monitor
 {
 	public partial class MonitorForm : Form
 	{
 		static Dictionary<Guid, ListViewItem> _listViewItems = new Dictionary<Guid, ListViewItem>();
+		static ConcurrentQueue<QueueItemStateChangeMessage> StateChanges = new ConcurrentQueue<QueueItemStateChangeMessage>();
+
+		private object _updateLock = new object();
 
 		public MonitorForm()
 		{
@@ -28,23 +34,37 @@ namespace Monitor
 		{
 			try
 			{
-				if (Int32.TryParse(txtBoxPort.Text, out var port) && IPAddress.TryParse(txtBoxIpAddress.Text, out var ipadd))
-				{
-					if (TcpPublisherClient.Instance.BeginConnect(ipadd, port))
-					{
-						UpdateMonitorForm.OnInitializingQueueItemsInListView += InitializeQueueItemsInForm;
-						UpdateMonitorForm.OnConnectionStateChange += ConnectionStateChange;
-					}
-				}
-				else
-				{
-					throw new Exception("Invalid ip address or port");
-				}
+				MonitorApiClients apiClients = new MonitorApiClients(this.txtBoxUsername.Text, this.txtPasswd.Text);
+				apiClients.PrepMonitoring();
+			}
+			catch (UnauthorizedAccessException)
+			{
+				MessageBox.Show("Onbekende combinatie van gebruikersnaam en wachtwoord");
 			}
 			catch (Exception ex)
 			{
 				MessageBox.Show(ex.Message);
 			}
+			
+			//try
+			//{
+			//	if (Int32.TryParse("9000", out var port) && IPAddress.TryParse("127.0.0.1", out var ipadd))
+			//	{
+			//		if (TcpPublisherClient.Instance.BeginConnect(ipadd, port))
+			//		{
+			//			UpdateMonitorForm.OnInitializingQueueItemsInListView += InitializeQueueItemsInForm;
+			//			UpdateMonitorForm.OnConnectionStateChange += UpdateFormOnStateChange;
+			//		}
+			//	}
+			//	else
+			//	{
+			//		throw new Exception("Invalid ip address or port");
+			//	}
+			//}
+			//catch (Exception ex)
+			//{
+			//	MessageBox.Show(ex.Message);
+			//}
 		}
 
 
@@ -52,8 +72,10 @@ namespace Monitor
 		{
 			if (TcpPublisherClient.Instance != null && TcpPublisherClient.Instance.isConnected)
 			{
+				HeartBeatClient.Instance.Disconnect();
+				TcpPublisherClient.Instance.Unsubscribe();
 				ClearListviews();
-				ConnectionStateChange(false);
+				UpdateFormOnStateChange(false);
 			}
 		}
 
@@ -64,78 +86,96 @@ namespace Monitor
 			{
 				ClearListviews();
 
-				for (int x = 0; x < queueItems.Count; x++)
+				lock (_updateLock)
 				{
-					ListViewItem lvi = new ListViewItem(queueItems[x].Data);
-					_listViewItems.Add(queueItems[x].ID, lvi);
-
-					switch (queueItems[x].QueueItemState)
+					for (int x = 0; x < queueItems.Count; x++)
 					{
-						case (StateType.Waiting):
-							this.listViewWaiting.Items.Add(lvi);
-							break;
-						case (StateType.Queued):
-							this.listViewQueued.Items.Add(lvi);
-							break;
-						case (StateType.InProgress):
-							this.listViewInProgress.Items.Add(lvi);
-							break;
-						default:
-							break;
+						ListViewItem lvi = new ListViewItem(queueItems[x].Data);
+						lvi.Tag = queueItems[x].QueueItemState;
+						_listViewItems.Add(queueItems[x].ID, lvi);
 					}
-				}	
+				}
+
+				this.listViewWaiting.Items.AddRange(_listViewItems.Where(x => (StateType)x.Value.Tag == StateType.Waiting).Select(i => i.Value).ToArray());
+				this.listViewQueued.Items.AddRange(_listViewItems.Where(x => (StateType)x.Value.Tag == StateType.Queued).Select(i => i.Value).ToArray());
+				this.listViewInProgress.Items.AddRange(_listViewItems.Where(x => (StateType)x.Value.Tag == StateType.InProgress).Select(i => i.Value).ToArray());
+
+				this.listViewWaiting.Update();
+				this.listViewQueued.Update();
+				this.listViewInProgress.Update();
+
+				ResetAmountCount();
+
+				UpdateMonitorForm.OnQueueItemChanged += QueueItemStateChange;
+
 			}
 			catch (Exception ex)
 			{
 				MessageBox.Show(ex.Message);
 			}
-			ResetAmountCount();
-			UpdateMonitorForm.OnQueueItemChanged += QueueItemStateChange;
 		}
 
 		private void QueueItemStateChange(Guid itemID, StateType oldState, StateType newState)
 		{
+			var item = _listViewItems[itemID];
 			try
 			{
-				var lvi = _listViewItems[itemID];
-				
-				switch (oldState)
-				{
-					case StateType.Waiting:
-						this.listViewWaiting.Items.Remove(lvi);
-						break;
-					case StateType.Queued:
-						this.listViewQueued.Items.Remove(lvi);
-						break;
-					case StateType.InProgress:
-						this.listViewInProgress.Items.Remove(lvi);
-						break;
-				}
+				lock (_updateLock)
+					RemoveItemFromListView(oldState, item);
+				lock (_updateLock)
+					AddItemToListView(newState, item);
 
-				switch (newState)
-				{
-					case StateType.Waiting:
-						this.listViewWaiting.Items.Insert(0, lvi);
-						break;
-					case StateType.Queued:
-						this.listViewQueued.Items.Insert(0, lvi);
-						break;
-					case StateType.InProgress:
-						this.listViewInProgress.Items.Insert(0, lvi);
-						break;
-				}
+				
+				this.listViewWaiting.Update();
+				this.listViewQueued.Update();
+				this.listViewInProgress.Update();
 
 				ResetAmountCount();
 			}
-
 			catch (Exception ex)
 			{
-				TcpPublisherClient.Instance.SendAsync(new ErrorMessageObject() { Data = ex.Message});
+				// log exception
 				MessageBox.Show(ex.Message);
 			}
 		}
 
-		private void ConnectionStateChange(bool connected)
+		private void RemoveItemFromListView(StateType state, ListViewItem item)
+		{
+			
+				switch (state)
+				{
+					case StateType.Waiting:
+						this.listViewWaiting.Items.Remove(item);
+						break;
+					case StateType.Queued:
+						this.listViewQueued.Items.Remove(item);
+						break;
+					case StateType.InProgress:
+						this.listViewInProgress.Items.Remove(item);
+						break;
+				}
+			
+		}
+
+		private void AddItemToListView(StateType state, ListViewItem item)
+		{
+				switch (state)
+				{
+					case StateType.Waiting:
+						this.listViewWaiting.Items.Insert(0, item);
+						break;
+					case StateType.Queued:
+						this.listViewQueued.Items.Insert(0, item);
+						break;
+					case StateType.InProgress:
+						this.listViewInProgress.Items.Insert(0, item);
+						break;
+				}
+			
+
+		}
+
+		private void UpdateFormOnStateChange(bool connected)
 		{
 			if (connected)
 			{
@@ -144,11 +184,14 @@ namespace Monitor
 			}
 			else
 			{
-				HeartBeatClient.Instance.Disconnect();
-				TcpPublisherClient.Instance.Unsubscribe();
 				this.lblAlive.Text = "Disconnected";
 				this.lblAlive.ForeColor = Color.FromName("Red");
+
+				UpdateMonitorForm.OnInitializingQueueItemsInListView -= InitializeQueueItemsInForm;
+				UpdateMonitorForm.OnConnectionStateChange -= UpdateFormOnStateChange;
+				UpdateMonitorForm.OnQueueItemChanged -= QueueItemStateChange;
 			}
+			this.lblAlive.Update();
 		}
 
 		private void ClearListviews()
@@ -165,9 +208,20 @@ namespace Monitor
 
 		private void ResetAmountCount()
 		{
-			this.lblWaitingAmount.Text = this.listViewWaiting.Items.Count.ToString();
-			this.lblQueuedAmount.Text = this.listViewQueued.Items.Count.ToString();
-			this.lblInProgressAmount.Text = this.listViewInProgress.Items.Count.ToString();
+			int waitingAmount= this.listViewWaiting.Items.Count;
+			int queuedAmount = this.listViewQueued.Items.Count;
+			int inProgressAmount = this.listViewInProgress.Items.Count;
+			int totalAmount = waitingAmount + queuedAmount + inProgressAmount;
+
+			this.lblWaitingAmount.Text = waitingAmount.ToString();
+			this.lblWaitingAmount.Update();
+			this.lblQueuedAmount.Text = queuedAmount.ToString();
+			this.lblQueuedAmount.Update();
+			this.lblInProgressAmount.Text = inProgressAmount.ToString();
+			this.lblInProgressAmount.Update();
+
+
+			this.lblTotalAmount.Text = totalAmount.ToString();
 		}
 	}
 }

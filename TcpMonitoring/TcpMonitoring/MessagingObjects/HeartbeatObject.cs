@@ -8,6 +8,6 @@ namespace TcpMonitoring.MessagingObjects
 {
     public class HeartbeatObject : IMessage
     {
-        public string Data { get; set; }
+        public string HeartbeatData { get; set; }
     }
 }

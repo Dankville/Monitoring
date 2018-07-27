@@ -81,7 +81,7 @@ namespace Monitor
 			{
 				StateObject state = new StateObject();
 				state.workSocket = publisherTcpClient;
-				SendAsync(new UnsubscribeMessageObject() { Data = "unsub" });
+				SendAsync(new UnsubscribeMessageObject());
 
 				publisherTcpClient.BeginDisconnect(true, new AsyncCallback(UnSubscribeCallback), state);
 			}
@@ -93,6 +93,7 @@ namespace Monitor
 			{
 				if (result.IsCompleted)
 				{
+					_lastReceivedMessage = "";
 					isConnected = false;
 					publisherTcpClient.EndDisconnect(result);
 				}
@@ -159,7 +160,6 @@ namespace Monitor
 			{
 				Socket client = (Socket)result.AsyncState;
 				int bytesRead = client.EndSend(result);
-				
 			}
 			else
 			{
@@ -189,6 +189,8 @@ namespace Monitor
 
 		private void ReceiveCallback(IAsyncResult result)
 		{
+			int lastMsgLength;
+			int EOMIndex;
 			try
 			{
 				if (result.IsCompleted)
@@ -197,14 +199,34 @@ namespace Monitor
 					Socket client = state.workSocket;
 					int bytesRead = client.EndReceive(result);
 
+
 					state.sb.Append(Encoding.ASCII.GetString(state.buffer, 0, bytesRead));
 					_lastReceivedMessage += state.sb.ToString();
-					// Check if last part of sent message.
-					if (_lastReceivedMessage.IndexOf("<EOM>") != -1)
-					{
-						HandleReceivedMessage(_lastReceivedMessage);
-					}
+					
+					// The received message  of 1024 bytes or less comes in.
+					// If the message doesn't have a EOM block, it's only a partial messages, so we can't process it and listen for more message bytes.
+					// The next 1024 bytes or less comes in, whe add the current message to the end of the previous message. This way beginning of the message in the previous byte []
+					// and the end of the message in the current byte [] are joined again. The <EOM> is found and we process the message respectively.
+					// This way we can split the continuous stream of json strings in a bytes array format into seperate json messages and handle them respectively.
 
+					if (_lastReceivedMessage.IndexOf("<EOM>", 0) != -1 && !String.IsNullOrEmpty(_lastReceivedMessage))
+						while (true)
+						{
+							string jsonMessage = "";
+
+							if (String.IsNullOrEmpty(_lastReceivedMessage))
+								break;
+							
+							EOMIndex = _lastReceivedMessage.IndexOf("<EOM>", 0);
+							if (EOMIndex == -1 || EOMIndex+1 > _lastReceivedMessage.Length)
+								break;
+							
+							jsonMessage = _lastReceivedMessage.Substring(0, EOMIndex);
+							_lastReceivedMessage = _lastReceivedMessage.Remove(0, EOMIndex + 5);
+
+							HandleReceivedMessage(jsonMessage);
+						}
+					
 					Receive();
 				}
 				else
@@ -224,59 +246,37 @@ namespace Monitor
 
 		private void HandleReceivedMessage(string jsonMessage)
 		{
-			_lastReceivedMessage = "";
 			try
 			{
-				List<string> messages = new List<string>();
-				while (true)
+				IMessage iMsgObj = JsonConvert.DeserializeObject<IMessage>(jsonMessage, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, });
+				switch (iMsgObj)
 				{
-					if (String.IsNullOrEmpty(jsonMessage))
+					case ErrorMessageObject E:
+						HandleErrorMessage(E);
 						break;
-
-					int EOFIndex = jsonMessage.IndexOf("<EOM>");
-					if (EOFIndex == -1)
+					case MonitoringInitializationMessage I:
+						HandleInitializationMessage(I);
 						break;
-
-					messages.Add(jsonMessage.Substring(0, EOFIndex));
-					jsonMessage = jsonMessage.Remove(0, EOFIndex + 5);
-				}
-				
-				foreach (string msg in messages)
-				{
-					IMessage iMsgObj = JsonConvert.DeserializeObject<IMessage>(msg, new JsonSerializerSettings() { TypeNameHandling = TypeNameHandling.All, });
-					switch (iMsgObj)
-					{
-						case ErrorMessageObject E:
-							HandleErrorMessage(E);
-							break;
-						case MonitoringInitializationMessage I:
-							HandleInitializationMessage(I);
-							break;
-						case QueueItemStateChangeMessage Q:
-							HandleQueueItemStateChangeMessage(Q);
-							break;
-						case ChangedItemsInInitializingMessage C:
-							HandleChangeItemsWhileInitializingMessage(C);
-							break;
-						default:
-							break;
-					}
+					case QueueItemStateChangeMessage Q:
+						HandleQueueItemStateChangeMessage(Q);
+						break;
+					case ChangedItemsWhileInitializingMessage C:
+						HandleChangedItemsWhileInitializingMessage(C);
+						break;
+					default:
+						break;
 				}
 			}
 			catch (Exception ex)
 			{
-				// show exception in monitoring form
 				MessageBox.Show(ex.Message);
-
 			}
 		}
 
-		private void HandleChangeItemsWhileInitializingMessage(ChangedItemsInInitializingMessage c)
+		private void HandleChangedItemsWhileInitializingMessage(ChangedItemsWhileInitializingMessage c)
 		{
 			foreach (var item in c.items)
-			{
 				UpdateMonitorForm.UpdateQueueListViewItem(item.QueueItemId, item.OldState, item.NewState);
-			}
 		}
 
 		private void HandleQueueItemStateChangeMessage(QueueItemStateChangeMessage q)
@@ -300,7 +300,7 @@ namespace Monitor
 
 		private void HandleErrorMessage(ErrorMessageObject error)
 		{
-			MessageBox.Show(error.Data);
+			MessageBox.Show(error.ErrorMessage);
 		}
 
 		public void Close()

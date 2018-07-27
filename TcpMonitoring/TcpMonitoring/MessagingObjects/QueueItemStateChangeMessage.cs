@@ -12,13 +12,11 @@ namespace TcpMonitoring.MessagingObjects
 	{
 		public QueueItemStateChangeMessage(Guid queueItemId, StateType oldState, StateType newState, string data)
 		{
-			Data = data;
 			QueueItemId = queueItemId;
 			OldState = oldState;
 			NewState = newState;
 		}
-
-		public string Data { get; set; }
+		
 		public Guid QueueItemId { get; private set; }
 		public StateType OldState { get; private set; }
 		public StateType NewState { get; private set; }	

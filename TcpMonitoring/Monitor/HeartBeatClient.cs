@@ -127,7 +127,7 @@ namespace Monitor
 				{
 					try
 					{
-						Thread.Sleep(5000);
+						Thread.Sleep(1000);
 
 						if (_missedHeartBeats >= 5)
 						{
@@ -150,8 +150,9 @@ namespace Monitor
 		{
 			if (heartBeatClient.Connected) {
 				_heartBeatChecker.Abort();
-				SendAsync(new UnsubscribeMessageObject() { Data = "Unsubscribe" });
+				SendAsync(new UnsubscribeMessageObject());
 			}
+			UpdateMonitorForm.ConnectionStateChange(false);
 		}
 
 		private void SendAsync(IMessage msg)
@@ -183,7 +184,7 @@ namespace Monitor
 		{
 			if (ar.IsCompleted)
 			{
-				heartBeatClient.Close(100);
+				heartBeatClient.Close(5000);
 			}
 		}
 
